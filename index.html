@@ -330,8 +330,15 @@
   </div>
 </div>
 
-<footer>
-  このサイトはSky 星を紡ぐ子どもたちの非公式ファンサイトです。thatgamecompanyは一切関与していません。
+<footer style="text-align:center; padding:24px 16px; color:var(--text-2); font-size:13px; border-top:1px solid var(--sep); margin-top:40px; line-height:1.6;">
+  このサイトはSky 星を紡ぐ子どもたちの非公式ファンサイトです。thatgamecompanyは一切関与していません。<br>
+  作成・ご意見: <a href="https://x.com/Skyzztai" target="_blank" rel="noopener noreferrer" style="color:var(--blue); text-decoration:none; font-weight:bold;">@Skyzztai</a>　／　<a href="https://odaibako.net/u/Skyzztai" target="_blank" rel="noopener noreferrer" style="color:var(--blue); text-decoration:none; font-weight:bold;">リクエストフォーム</a><br>
+  <span style="color:var(--text-2); font-size:12px; margin-top:4px; display:inline-block;">
+    参考:
+    <a href="https://sky-children-of-the-light.fandom.com/ja/wiki/%E6%84%9F%E6%83%85%E8%A1%A8%E7%8F%BE" target="_blank" rel="noopener noreferrer" style="color: var(--blue);">感情表現 (Sky Wiki 日本語)</a>
+    ／
+    <a href="https://sky-children-of-the-light.fandom.com/wiki/Expressions" target="_blank" rel="noopener noreferrer" style="color: var(--blue);">Expressions (Sky Wiki 英語)</a>
+  </span>
 </footer>
 
 <script>
@@ -671,7 +678,16 @@ function getStats() {
     total += e.maxLevel;
     owned += (data[e.id] || []).length;
   });
-  return { owned, total, pct: total > 0 ? Math.round((owned / total) * 100) : 0 };
+  return { owned, total, pct: total > 0 ? (owned / total) * 100 : 0 };
+}
+
+// 全体は477レベル分もあるため、1個所持しただけだと整数%では0%のまま変化して
+// 見えない。1個でも所持したらパーセンテージが動いて見えるよう小数点1桁まで表示する
+// （所持ゼロなら"0%"、全所持なら"100%"とだけ表示し、それ以外は小数1桁を出す）。
+function formatPct(pct) {
+  if (pct <= 0) return '0%';
+  if (pct >= 100) return '100%';
+  return pct.toFixed(1) + '%';
 }
 
 /* ================================================================
@@ -772,7 +788,7 @@ function renderList() {
 
   const stats = getStats();
   document.getElementById('hdrCount').textContent = `${stats.owned} / ${stats.total} レベル所持`;
-  document.getElementById('hdrPct').textContent = `${stats.pct}%`;
+  document.getElementById('hdrPct').textContent = formatPct(stats.pct);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
