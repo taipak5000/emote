@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#FF9500">
+  <title>エモート所持率管理</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ── Design tokens（アイテム所持率管理と統一） ──────────────── */
+    :root {
+      --bg:        #F2F2F7;
+      --card:      #FFFFFF;
+      --sep:       rgba(60,60,67,0.12);
+      --orange:    #FF9500;
+      --orange-d:  #FF6200;
+      --orange-bg: rgba(255,149,0,0.10);
+      --blue:      #007AFF;
+      --blue-bg:   rgba(0,122,255,0.08);
+      --green:     #34C759;
+      --green-bg:  rgba(52,199,89,0.10);
+      --text:      #1C1C1E;
+      --text-2:    #8E8E93;
+      --text-3:    #C7C7CC;
+      --r:         16px;
+      --r-sm:      10px;
+    }
+
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    a { text-decoration:none; color:inherit; -webkit-tap-highlight-color:transparent; }
+    button { cursor:pointer; border:none; background:none; font-family:inherit; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+      background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 60px;
+    }
+
+    /* ── Navigation bar ────────────────────────── */
+    nav {
+      position: sticky; top: 0; z-index: 20;
+      background: rgba(242,242,247,0.88); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border-bottom: 0.5px solid var(--sep); padding: 14px 20px 12px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .nav-title { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; }
+    .sidebar-toggle-btn {
+      background: var(--card); border: 1px solid var(--sep); border-radius: var(--r-sm);
+      padding: 6px 12px; font-size: 13px; font-weight: 600; color: var(--text);
+    }
+
+    /* ── プロフィールバー ─────────────────────── */
+    .pf-bar {
+      max-width: 600px; margin: 12px auto 0; background: var(--card); border: 1px solid var(--sep);
+      border-radius: var(--r-sm); padding: 10px 14px; font-size: 13px; color: var(--text-2);
+      text-align: center; cursor: pointer;
+    }
+    .pf-bar b { color: var(--blue); font-weight: 700; }
+    .pf-modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+      z-index: 1000; align-items: center; justify-content: center; padding: 20px;
+    }
+    .pf-modal-overlay.open { display: flex; }
+    .pf-modal-card {
+      width: 100%; max-width: 360px; max-height: 80vh; overflow-y: auto;
+      background: var(--card); border-radius: var(--r); padding: 20px; box-sizing: border-box;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    }
+    .pf-modal-card h3 { margin: 0 0 14px; font-size: 16px; color: var(--text); }
+    .pf-row { display: flex; align-items: center; gap: 8px; padding: 10px 4px; border-bottom: 0.5px solid var(--sep); }
+    .pf-row:last-of-type { border-bottom: none; }
+    .pf-row-name { flex: 1; font-size: 14.5px; color: var(--text); cursor: pointer; word-break: break-all; }
+    .pf-row.active .pf-row-name { color: var(--blue); font-weight: 700; }
+    .pf-icon-btn {
+      background: var(--bg); border: 1px solid var(--sep); color: var(--text-2);
+      border-radius: 6px; padding: 5px 9px; font-size: 13px; cursor: pointer; flex-shrink: 0;
+    }
+    .pf-icon-btn:hover { background: var(--sep); }
+    .pf-add-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .pf-input { flex: 1; min-width: 0; background: var(--bg); border: 1px solid var(--sep); border-radius: 6px;
+      padding: 8px 10px; font-size: 14px; color: var(--text); font-family: inherit; outline: none; box-sizing: border-box; }
+    .pf-add-btn { background: var(--blue); color: #fff; border: none; border-radius: 6px; padding: 8px 14px;
+      font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer; white-space: nowrap; }
+    .pf-hint { font-size: 11.5px; color: var(--text-2); line-height: 1.5; margin: 12px 0 0; }
+    .pf-close-btn { display: block; width: 100%; margin-top: 16px; background: var(--bg); border: 1px solid var(--sep);
+      color: var(--text); border-radius: var(--r-sm); padding: 10px; font-size: 14px; cursor: pointer; }
+    .pf-row-input { flex: 1; min-width: 0; background: var(--bg); border: 1px solid var(--blue); border-radius: 6px;
+      padding: 6px 8px; font-size: 14px; color: var(--text); font-family: inherit; outline: none; box-sizing: border-box; }
+    .pf-row-confirm-text { flex: 1; font-size: 13px; color: var(--text); line-height: 1.4; }
+    .pf-row-btn-ok { background: var(--blue); color: #fff; border: none; }
+    .pf-row-btn-danger { background: #ff3b30; color: #fff; border: none; }
+
+    /* ── Layout ───────────────────────── */
+    .app-layout { max-width: 720px; margin: 0 auto; padding: 0 16px; }
+    @media (min-width: 850px) { .app-layout { max-width: 960px; display: flex; gap: 20px; align-items: flex-start; } }
+    .wrap { flex: 1; min-width: 0; }
+
+    /* ── Sidebar overlay（モバイル） ─────────────── */
+    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 499; }
+    .sidebar-overlay.show { display: block; }
+
+    /* ── Sidebar ──────────────────────────────── */
+    .sidebar {
+      width: 200px; flex-shrink: 0; position: sticky; top: 58px;
+      background: var(--card); border-radius: var(--r); padding: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07); display: none; margin-top: 22px;
+    }
+    @media (min-width: 850px) { .sidebar { display: block; } }
+    .sidebar.mobile-open {
+      display: block; position: fixed; top: 0; left: 0; height: 100%; width: 250px;
+      z-index: 500; overflow-y: auto; border-radius: 0 var(--r) var(--r) 0; margin-top: 0;
+    }
+    .sidebar-section-label { font-size: 11px; font-weight: 700; color: var(--text-2); margin-bottom: 8px; text-transform: uppercase; }
+    .sidebar-close-btn { font-size: 20px; color: var(--text-2); display: none; }
+    .sidebar.mobile-open .sidebar-close-btn { display: block; }
+    .sidebar-nav-link {
+      display: flex; align-items: center; gap: 9px; padding: 9px 12px; border-radius: var(--r-sm);
+      color: var(--text); font-size: 13.5px; font-weight: 500; margin-bottom: 2px;
+    }
+    .sidebar-nav-link:hover { background: var(--bg); }
+    .sidebar-nav-link.current-tool { background: var(--orange-bg); color: var(--orange); font-weight: 700; }
+
+    /* ── Header Banner（全体達成率） ─────────────── */
+    .cat-header-card {
+      background: var(--card); border-radius: var(--r); padding: 20px; margin-top: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07); display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    .cat-header-info { display: flex; align-items: center; gap: 12px; }
+    .cat-header-icon { width: 44px; height: 44px; background: var(--bg); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+    .cat-header-name { font-size: 18px; font-weight: 700; }
+    .cat-header-count { font-size: 13px; color: var(--text-2); margin-top: 2px; }
+    .cat-header-pct { font-size: 24px; font-weight: 800; color: var(--orange); }
+
+    /* ── Filter / Search ─────────────────────── */
+    .control-panel {
+      background: var(--card); border-radius: var(--r); padding: 16px; margin-top: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07); display: flex; flex-direction: column; gap: 12px;
+    }
+    .control-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .control-label { font-size: 12px; font-weight: 600; color: var(--text-2); min-width: 60px; }
+    .select-box {
+      background: var(--bg); border: none; padding: 8px 12px; border-radius: var(--r-sm);
+      font-size: 13px; color: var(--text); font-weight: 500; outline: none; flex: 1; min-width: 120px;
+    }
+    .search-input::placeholder { color: var(--text-3); }
+
+    .list-header-row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 22px 4px 8px;
+    }
+    .sec-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-2); }
+
+    /* ── Emote List ─────────────────────────── */
+    .emote-list { display: flex; flex-direction: column; gap: 8px; }
+    .emote-card {
+      background: var(--card); border-radius: var(--r); padding: 14px 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07); display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      flex-wrap: wrap; transition: background 0.2s;
+    }
+    .emote-card.is-complete { background: rgba(52,199,89,0.05); }
+    .emote-info { min-width: 140px; flex: 1; }
+    .emote-name { font-size: 15px; font-weight: 600; color: var(--text); }
+    .emote-name-en { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+    .emote-sub { font-size: 12px; color: var(--text-2); margin-top: 3px; }
+    .emote-card.is-complete .emote-sub { color: var(--green); font-weight: 600; }
+
+    .lv-row { display: flex; gap: 6px; flex-shrink: 0; }
+    .lv-btn {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: var(--bg); color: var(--text-2); font-size: 13px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      border: 2px solid transparent; transition: all 0.12s;
+    }
+    .lv-btn:active { transform: scale(0.9); }
+    .lv-btn.is-owned { background: var(--green-bg); color: var(--green); border-color: var(--green); }
+
+    .empty-message { text-align: center; padding: 40px; color: var(--text-2); font-size: 14px; background: var(--card); border-radius: var(--r); }
+
+    .draft-notice {
+      background: var(--orange-bg); border: 1px solid rgba(255,149,0,0.3); border-radius: var(--r);
+      padding: 14px 16px; margin-top: 16px; font-size: 12.5px; color: var(--orange-d); line-height: 1.7;
+    }
+
+    footer {
+      text-align: center; padding: 24px 16px; color: var(--text-2); font-size: 13px;
+      border-top: 1px solid var(--sep); margin-top: 40px; line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-title">🎭 エモート所持率管理</div>
+  <button class="sidebar-toggle-btn" onclick="openSidebarMobile()">☰ ツール</button>
+</nav>
+
+<div class="pf-bar" id="pfBar" onclick="pfOpenModal()"></div>
+
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebarMobile()"></div>
+
+<div class="pf-modal-overlay" id="pfModalOverlay" onclick="if(event.target===this) pfCloseModal()">
+  <div class="pf-modal-card">
+    <h3>🗂️ プロフィール（保存枠）</h3>
+    <div id="pfModalBody"></div>
+    <div class="pf-add-row">
+      <input type="text" class="pf-input" id="pfNewName" placeholder="例: サブ垢1" maxlength="30">
+      <button type="button" class="pf-add-btn" onclick="pfAddProfile()">追加</button>
+    </div>
+    <div class="pf-hint">プロフィールを切り替えると、エモートの所持状況が切り替え先のプロフィールのものに入れ替わります（このブラウザ内にすべて保存されます）。</div>
+    <button type="button" class="pf-close-btn" onclick="pfCloseModal()">閉じる</button>
+  </div>
+</div>
+
+<div class="app-layout">
+
+  <aside class="sidebar" id="sidebar">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+      <div class="sidebar-section-label" style="margin-bottom:0;">🔗 関連ツール</div>
+      <button class="sidebar-close-btn" onclick="closeSidebarMobile()">×</button>
+    </div>
+    <nav>
+      <a href="https://taipak5000.github.io/share/" class="sidebar-nav-link">📍 創作物管理ツール</a>
+      <a href="https://taipak5000.github.io/star-candle/" class="sidebar-nav-link">🕯️ 星のキャンドル計算機</a>
+      <a href="https://taipak5000.github.io/companion/" class="sidebar-nav-link">✨ 精霊同行ツール</a>
+      <a href="https://taipak5000.github.io/wings/" class="sidebar-nav-link">🪽 羽トラッカー</a>
+      <a href="https://taipak5000.github.io/emote/" class="sidebar-nav-link current-tool">🎭 エモート所持率管理</a>
+    </nav>
+  </aside>
+
+  <div class="wrap">
+
+    <div class="cat-header-card">
+      <div class="cat-header-info">
+        <div class="cat-header-icon">🎭</div>
+        <div>
+          <div class="cat-header-name">エモート全体</div>
+          <div class="cat-header-count" id="hdrCount">-- / -- レベル所持</div>
+        </div>
+      </div>
+      <div class="cat-header-pct" id="hdrPct">--%</div>
+    </div>
+
+    <div class="control-panel">
+      <div class="control-row">
+        <span class="control-label">名前検索</span>
+        <input type="text" class="select-box search-input" id="searchName" placeholder="🔍 エモート名で絞り込み..." oninput="renderList()">
+      </div>
+      <div class="control-row">
+        <span class="control-label">絞り込み</span>
+        <select class="select-box" id="filterStatus" onchange="renderList()">
+          <option value="all">すべての所持状態</option>
+          <option value="complete">コンプリート済みのみ</option>
+          <option value="partial">一部所持のみ</option>
+          <option value="none">未所持のみ</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="list-header-row">
+      <span class="sec-label">エモート一覧</span>
+      <span class="sec-label" id="listCountLabel"></span>
+    </div>
+
+    <div class="emote-list" id="emoteList"><!-- JS --></div>
+
+    <div class="draft-notice">
+      ⚠️ エモート一覧はWeb上の情報をもとに作成した たたき台 です。名称・最大レベル・抜け漏れなどに誤りが含まれる可能性があります。特に一覧の終盤（放浪カーニバル・星々の展示など比較的新しいエリア）の日本語名は仮訳です。
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  このサイトはSky 星を紡ぐ子どもたちの非公式ファンサイトです。thatgamecompanyは一切関与していません。
+</footer>
+
+<script>
+/* ================================================================
+   プロフィール（保存枠）管理: taipak5000.github.io 配下の各ツール共通
+   ================================================================ */
+const PROFILES_KEY       = 'skyProfiles_v1';
+const ACTIVE_PROFILE_KEY = 'skyActiveProfile_v1';
+const DEFAULT_PROFILE_ID = 'default';
+
+function loadProfiles() {
+  try {
+    const list = JSON.parse(localStorage.getItem(PROFILES_KEY));
+    if (Array.isArray(list) && list.length > 0) return list;
+  } catch (_) {}
+  return null;
+}
+function saveProfiles(list) { localStorage.setItem(PROFILES_KEY, JSON.stringify(list)); }
+
+function ensureProfilesInit() {
+  let list = loadProfiles();
+  if (!list) {
+    list = [{ id: DEFAULT_PROFILE_ID, name: 'メイン' }];
+    saveProfiles(list);
+  }
+  if (!localStorage.getItem(ACTIVE_PROFILE_KEY)) {
+    localStorage.setItem(ACTIVE_PROFILE_KEY, DEFAULT_PROFILE_ID);
+  }
+  return list;
+}
+function getActiveProfileId() { return localStorage.getItem(ACTIVE_PROFILE_KEY) || DEFAULT_PROFILE_ID; }
+function getActiveProfile() {
+  const list = ensureProfilesInit();
+  return list.find(p => p.id === getActiveProfileId()) || list[0];
+}
+
+function nsKey(rawKey) {
+  const id = getActiveProfileId();
+  return id === DEFAULT_PROFILE_ID ? rawKey : `${rawKey}__p_${id}`;
+}
+
+function switchProfile(id) {
+  if (id === getActiveProfileId()) return;
+  localStorage.setItem(ACTIVE_PROFILE_KEY, id);
+  location.reload();
+}
+function createProfile(name) {
+  const trimmed = (name || '').trim();
+  if (!trimmed) return;
+  const list = ensureProfilesInit();
+  const id = 'p_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  list.push({ id, name: trimmed });
+  saveProfiles(list);
+  switchProfile(id);
+}
+function renameProfile(id, name) {
+  const trimmed = (name || '').trim();
+  if (!trimmed) return;
+  const list = ensureProfilesInit();
+  const p = list.find(pr => pr.id === id);
+  if (!p) return;
+  p.name = trimmed;
+  saveProfiles(list);
+  pfRenderModal();
+  pfRenderBar();
+}
+function deleteProfile(id) {
+  const list = ensureProfilesInit();
+  if (list.length <= 1) return;
+  const remaining = list.filter(p => p.id !== id);
+  saveProfiles(remaining);
+  if (getActiveProfileId() === id) {
+    localStorage.setItem(ACTIVE_PROFILE_KEY, remaining[0].id);
+    location.reload();
+    return;
+  }
+  pfRenderModal();
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+
+let pfEditingId = null;
+let pfDeletingId = null;
+
+function pfOpenModal() {
+  pfEditingId = null;
+  pfDeletingId = null;
+  pfRenderModal();
+  document.getElementById('pfModalOverlay').classList.add('open');
+}
+function pfCloseModal() {
+  pfEditingId = null;
+  pfDeletingId = null;
+  document.getElementById('pfModalOverlay').classList.remove('open');
+}
+function pfRenderBar() {
+  const bar = document.getElementById('pfBar');
+  if (!bar) return;
+  const profile = getActiveProfile();
+  bar.innerHTML = `🗂️ <b>${escapeHtml(profile.name)}</b> に切替中（タップで切替）`;
+}
+function pfRenderModal() {
+  const list = ensureProfilesInit();
+  const activeId = getActiveProfileId();
+  const rows = list.map(p => {
+    const isActive = p.id === activeId;
+
+    if (pfEditingId === p.id) {
+      const nameEsc = escapeHtml(p.name);
+      return `
+        <div class="pf-row" style="flex-wrap: wrap;">
+          <input type="text" class="pf-row-input" id="pfEditInput" value="${nameEsc}" maxlength="30"
+            onkeydown="if(event.key==='Enter') pfConfirmRenameInline('${p.id}'); if(event.key==='Escape') pfCancelRowState();">
+          <button type="button" class="pf-icon-btn pf-row-btn-ok" onclick="pfConfirmRenameInline('${p.id}')">保存</button>
+          <button type="button" class="pf-icon-btn" onclick="pfCancelRowState()">取消</button>
+        </div>`;
+    }
+    if (pfDeletingId === p.id) {
+      return `
+        <div class="pf-row" style="flex-wrap: wrap;">
+          <span class="pf-row-confirm-text">「${escapeHtml(p.name)}」を削除しますか？（一覧からの削除のみで、保存済みデータはブラウザ内に残ります）</span>
+          <button type="button" class="pf-icon-btn pf-row-btn-danger" onclick="pfConfirmDeleteInline('${p.id}')">削除</button>
+          <button type="button" class="pf-icon-btn" onclick="pfCancelRowState()">取消</button>
+        </div>`;
+    }
+    return `
+      <div class="pf-row ${isActive ? 'active' : ''}">
+        <span class="pf-row-name" onclick="switchProfile('${p.id}')">${isActive ? '✅ ' : ''}${escapeHtml(p.name)}</span>
+        <button type="button" class="pf-icon-btn" title="名前を変更" onclick="pfStartRename('${p.id}')">✏️</button>
+        ${list.length > 1 ? `<button type="button" class="pf-icon-btn" title="削除" onclick="pfStartDelete('${p.id}')">🗑️</button>` : ''}
+      </div>`;
+  }).join('');
+
+  document.getElementById('pfModalBody').innerHTML = `<div>${rows}</div>`;
+
+  if (pfEditingId !== null) {
+    const input = document.getElementById('pfEditInput');
+    if (input) { input.focus(); input.select(); }
+  }
+}
+function pfAddProfile() {
+  const input = document.getElementById('pfNewName');
+  createProfile(input.value);
+}
+function pfStartRename(id) { pfDeletingId = null; pfEditingId = id; pfRenderModal(); }
+function pfStartDelete(id) { pfEditingId = null; pfDeletingId = id; pfRenderModal(); }
+function pfCancelRowState() { pfEditingId = null; pfDeletingId = null; pfRenderModal(); }
+function pfConfirmRenameInline(id) {
+  const input = document.getElementById('pfEditInput');
+  const next = input ? input.value : '';
+  pfEditingId = null;
+  if (next && next.trim()) renameProfile(id, next); else pfRenderModal();
+}
+function pfConfirmDeleteInline(id) { pfDeletingId = null; deleteProfile(id); }
+
+/* ================================================================
+   サイドバー開閉（モバイル）
+   ================================================================ */
+function openSidebarMobile() {
+  document.getElementById('sidebar').classList.add('mobile-open');
+  document.getElementById('sidebarOverlay').classList.add('show');
+}
+function closeSidebarMobile() {
+  document.getElementById('sidebar').classList.remove('mobile-open');
+  document.getElementById('sidebarOverlay').classList.remove('show');
+}
+
+/* ================================================================
+   エモートデータ
+   Sky Wiki（英語版・日本語版）を参考に作成したたたき台データです。
+   maxLevel は基本4ですが、一部のエモートは1・2・6など例外があります
+   （レベル3を飛ばしてレベル4だけ所持している等の非連続所持にも対応するため、
+   各レベルは独立したチェックとして保存します）。
+   ================================================================ */
+const EMOTES_DATA = [
+  { id: 'emote_001', name: '座る', nameEn: 'Sit', maxLevel: 1 },
+  { id: 'emote_002', name: '指さし', nameEn: 'Point', maxLevel: 4 },
+  { id: 'emote_003', name: 'おいで', nameEn: 'Come', maxLevel: 4 },
+  { id: 'emote_004', name: '固辞', nameEn: 'No Thanks', maxLevel: 4 },
+  { id: 'emote_005', name: 'ようこそ', nameEn: 'Welcome', maxLevel: 4 },
+  { id: 'emote_006', name: 'うなずく', nameEn: 'Nod', maxLevel: 4 },
+  { id: 'emote_007', name: 'チッチッチ', nameEn: 'Scold', maxLevel: 4 },
+  { id: 'emote_008', name: '蝶々', nameEn: 'Butterfly', maxLevel: 4 },
+  { id: 'emote_009', name: '拍手', nameEn: 'Clap', maxLevel: 4 },
+  { id: 'emote_010', name: '手を振る', nameEn: 'Wave', maxLevel: 6 },
+  { id: 'emote_011', name: '笑う', nameEn: 'Laugh', maxLevel: 4 },
+  { id: 'emote_012', name: 'あくび', nameEn: 'Yawn', maxLevel: 4 },
+  { id: 'emote_013', name: '汗拭き', nameEn: 'Wipe Brow', maxLevel: 4 },
+  { id: 'emote_014', name: '火を掲げる', nameEn: 'Teamwork', maxLevel: 1 },
+  { id: 'emote_015', name: '投げキッス', nameEn: 'Blow Kiss', maxLevel: 4 },
+  { id: 'emote_016', name: '感謝', nameEn: 'Grateful', maxLevel: 4 },
+  { id: 'emote_017', name: '腹つづみ', nameEn: 'Belly Scratch', maxLevel: 4 },
+  { id: 'emote_018', name: '含み笑い', nameEn: 'Chuckle', maxLevel: 4 },
+  { id: 'emote_019', name: '凍える', nameEn: 'Shiver', maxLevel: 4 },
+  { id: 'emote_020', name: 'かくれんぼ', nameEn: 'Hide and Seek', maxLevel: 1 },
+  { id: 'emote_021', name: '怒る', nameEn: 'Angry', maxLevel: 4 },
+  { id: 'emote_022', name: '恥じらう', nameEn: 'Shy', maxLevel: 4 },
+  { id: 'emote_023', name: 'ショック', nameEn: 'Shocked', maxLevel: 4 },
+  { id: 'emote_024', name: '謝る', nameEn: 'Apologize', maxLevel: 4 },
+  { id: 'emote_025', name: '泣く', nameEn: 'Crying', maxLevel: 6 },
+  { id: 'emote_026', name: '歌舞伎風', nameEn: 'Kabuki', maxLevel: 4 },
+  { id: 'emote_027', name: '肩をすくめる', nameEn: 'Shrug', maxLevel: 4 },
+  { id: 'emote_028', name: 'ふきげん', nameEn: 'Grumpy', maxLevel: 4 },
+  { id: 'emote_029', name: 'そっと覗く', nameEn: 'Peek', maxLevel: 4 },
+  { id: 'emote_030', name: 'ひゃー', nameEn: 'Eww', maxLevel: 4 },
+  { id: 'emote_031', name: '顔を覆う', nameEn: 'Facepalm', maxLevel: 4 },
+  { id: 'emote_032', name: '逆立ち', nameEn: 'Handstand', maxLevel: 4 },
+  { id: 'emote_033', name: '宙返り', nameEn: 'Backflip', maxLevel: 4 },
+  { id: 'emote_034', name: 'お辞儀', nameEn: 'Bow', maxLevel: 4 },
+  { id: 'emote_035', name: '応援', nameEn: 'Cheer', maxLevel: 4 },
+  { id: 'emote_036', name: 'わーい', nameEn: 'Leap', maxLevel: 4 },
+  { id: 'emote_037', name: 'トリプルアクセル', nameEn: 'Triple Axel', maxLevel: 4 },
+  { id: 'emote_038', name: 'おめでとう', nameEn: 'Confetti', maxLevel: 4 },
+  { id: 'emote_039', name: 'ブギーダンス', nameEn: 'Boogie Dance', maxLevel: 4 },
+  { id: 'emote_040', name: 'スピンダンス', nameEn: 'Spin Dance', maxLevel: 4 },
+  { id: 'emote_041', name: 'ジャグリング', nameEn: 'Juggle', maxLevel: 4 },
+  { id: 'emote_042', name: '蟹歩き', nameEn: 'Crab Walk', maxLevel: 4 },
+  { id: 'emote_043', name: 'ガッツ！', nameEn: 'Rally Cheer', maxLevel: 4 },
+  { id: 'emote_044', name: '旋舞スピン', nameEn: 'Spin Trick', maxLevel: 4 },
+  { id: 'emote_045', name: 'ショーダンス', nameEn: 'Show Dance', maxLevel: 4 },
+  { id: 'emote_046', name: '身をかがめる', nameEn: 'Duck', maxLevel: 4 },
+  { id: 'emote_047', name: '気絶', nameEn: 'Faint', maxLevel: 4 },
+  { id: 'emote_048', name: 'リスペクト', nameEn: 'Respect', maxLevel: 4 },
+  { id: 'emote_049', name: '見回す', nameEn: 'Look Around', maxLevel: 4 },
+  { id: 'emote_050', name: '敬礼', nameEn: 'Salute', maxLevel: 4 },
+  { id: 'emote_051', name: '了解！', nameEn: 'Acknowledge', maxLevel: 4 },
+  { id: 'emote_052', name: 'カンフー', nameEn: 'Kung Fu', maxLevel: 4 },
+  { id: 'emote_053', name: '行かないで', nameEn: "Don't Go!", maxLevel: 4 },
+  { id: 'emote_054', name: 'ばあ！！', nameEn: 'Boo', maxLevel: 4 },
+  { id: 'emote_055', name: 'ほこり払い', nameEn: 'Dust Off', maxLevel: 4 },
+  { id: 'emote_056', name: '胸をたたく', nameEn: 'Chest Pound', maxLevel: 4 },
+  { id: 'emote_057', name: '行進', nameEn: 'Marching', maxLevel: 4 },
+  { id: 'emote_058', name: '念動力', nameEn: 'Telekinesis', maxLevel: 4 },
+  { id: 'emote_059', name: '浮遊', nameEn: 'Float', maxLevel: 4 },
+  { id: 'emote_060', name: '祈る', nameEn: 'Pray', maxLevel: 4 },
+  { id: 'emote_061', name: '太陽礼拝', nameEn: 'Yoga', maxLevel: 4 },
+  { id: 'emote_062', name: 'しーっ', nameEn: 'Shush', maxLevel: 4 },
+  { id: 'emote_063', name: 'スパークル', nameEn: 'Sparkler', maxLevel: 4 },
+  { id: 'emote_064', name: '考え中', nameEn: 'Thinking', maxLevel: 4 },
+  { id: 'emote_065', name: '居眠り', nameEn: 'Doze', maxLevel: 4 },
+  { id: 'emote_066', name: 'バランス', nameEn: 'Balance', maxLevel: 4 },
+  { id: 'emote_067', name: '深呼吸', nameEn: 'Deep Breath', maxLevel: 4 },
+  { id: 'emote_068', name: 'しゃぼん玉', nameEn: 'Bubbles', maxLevel: 4 },
+  { id: 'emote_069', name: '手招き', nameEn: 'Beckon', maxLevel: 4 },
+  { id: 'emote_070', name: 'ご満悦', nameEn: 'Gloat', maxLevel: 4 },
+  { id: 'emote_071', name: 'ストレッチ', nameEn: 'Stretch', maxLevel: 4 },
+  { id: 'emote_072', name: 'うなだれる', nameEn: 'Slouch', maxLevel: 4 },
+  { id: 'emote_073', name: 'くしゃみ', nameEn: 'Sneeze', maxLevel: 4 },
+  { id: 'emote_074', name: 'しめしめ', nameEn: 'Hand-Rub', maxLevel: 4 },
+  { id: 'emote_075', name: 'ジャジャーン', nameEn: 'Voilà', maxLevel: 4 },
+  { id: 'emote_076', name: '誘導', nameEn: 'Navigate', maxLevel: 4 },
+  { id: 'emote_077', name: '落ち着いて', nameEn: 'Calm Down', maxLevel: 4 },
+  { id: 'emote_078', name: '邪悪な笑い', nameEn: 'Evil Laugh', maxLevel: 4 },
+  { id: 'emote_079', name: '痛い！', nameEn: 'Ouch', maxLevel: 4 },
+  { id: 'emote_080', name: '不安', nameEn: 'Anxious', maxLevel: 4 },
+  { id: 'emote_081', name: 'ヘッドバンギング', nameEn: 'Headbob', maxLevel: 4 },
+  { id: 'emote_082', name: 'うわー！', nameEn: 'Awww', maxLevel: 4 },
+  { id: 'emote_083', name: '光を振る', nameEn: 'Waving Light', maxLevel: 4 },
+  { id: 'emote_084', name: '持ち上げる', nameEn: 'Raise the Roof', maxLevel: 4 },
+  { id: 'emote_085', name: 'クルクル', nameEn: 'Twirl', maxLevel: 4 },
+  { id: 'emote_086', name: '手拍子', nameEn: 'Rhythmic Clap', maxLevel: 4 },
+  { id: 'emote_087', name: '指揮', nameEn: 'Conduct', maxLevel: 4 },
+  { id: 'emote_088', name: 'サイレント拍手', nameEn: 'Silent Clap', maxLevel: 4 },
+  { id: 'emote_089', name: 'スキップ', nameEn: 'Skipping', maxLevel: 4 },
+  { id: 'emote_090', name: '懇願', nameEn: 'Pleading', maxLevel: 4 },
+  { id: 'emote_091', name: 'ぬき足', nameEn: 'Tiptoeing', maxLevel: 4 },
+  { id: 'emote_092', name: '嘆く', nameEn: 'Grieving', maxLevel: 4 },
+  { id: 'emote_093', name: 'フットバック', nameEn: 'Hacky Sack', maxLevel: 4 },
+  { id: 'emote_094', name: 'でんぐり返し', nameEn: 'Somersault', maxLevel: 4 },
+  { id: 'emote_095', name: 'とぼとぼ歩き', nameEn: 'Moping', maxLevel: 4 },
+  { id: 'emote_096', name: '懸垂', nameEn: 'Pull-up', maxLevel: 4 },
+  { id: 'emote_097', name: '上機嫌', nameEn: 'Jolly Dance', maxLevel: 4 },
+  { id: 'emote_098', name: '目隠しバランスポーズ', nameEn: 'Blindfold Balance Pose', maxLevel: 4 },
+  { id: 'emote_099', name: 'キュア・フォー・ミー', nameEn: 'Cure for Me Dance', maxLevel: 2 },
+  { id: 'emote_100', name: '口笛', nameEn: 'Whistle', maxLevel: 4 },
+  { id: 'emote_101', name: '手足を曲げる', nameEn: 'Flex', maxLevel: 4 },
+  { id: 'emote_102', name: '浮遊スピン', nameEn: 'Float Spin', maxLevel: 4 },
+  { id: 'emote_103', name: '本を読む', nameEn: 'Read', maxLevel: 4 },
+  { id: 'emote_104', name: '側転', nameEn: 'Cartwheel', maxLevel: 4 },
+  { id: 'emote_105', name: 'ハートジェスチャー', nameEn: 'Heart Gesture', maxLevel: 4 },
+  { id: 'emote_106', name: 'アップダンス', nameEn: 'Hype Dance', maxLevel: 4 },
+  { id: 'emote_107', name: '咳き込む', nameEn: 'Cough', maxLevel: 4 },
+  { id: 'emote_108', name: '驚き', nameEn: 'Surprised', maxLevel: 4 },
+  { id: 'emote_109', name: 'レースフラッグ', nameEn: 'Flag Signal', maxLevel: 4 },
+  { id: 'emote_110', name: '飛行ごっこ', nameEn: 'Flight Run', maxLevel: 4 },
+  { id: 'emote_111', name: '海月ダンス', nameEn: 'Jellyfish Dance', maxLevel: 4 },
+  { id: 'emote_112', name: 'くらくら', nameEn: 'Dizzy', maxLevel: 4 },
+  { id: 'emote_113', name: '小さく拍手', nameEn: 'Cute Clap', maxLevel: 4 },
+  { id: 'emote_114', name: '承認（仮訳）', nameEn: 'Approve', maxLevel: 4 },
+  { id: 'emote_115', name: 'ブレイクダンス（仮訳）', nameEn: 'Break Dance', maxLevel: 4 },
+  { id: 'emote_116', name: 'ボール回し（仮訳）', nameEn: 'Ball Spin Trick', maxLevel: 4 },
+  { id: 'emote_117', name: 'メモを取る（仮訳）', nameEn: 'Take Notes', maxLevel: 4 },
+  { id: 'emote_118', name: 'イライラ（仮訳）', nameEn: 'Frustration', maxLevel: 4 },
+  { id: 'emote_119', name: 'ゆっくり歩く（仮訳）', nameEn: 'Slow Walk', maxLevel: 4 },
+  { id: 'emote_120', name: '日向ぼっこ（仮訳）', nameEn: 'Bask', maxLevel: 4 },
+  { id: 'emote_121', name: '絵を描く（仮訳）', nameEn: 'Draw', maxLevel: 4 },
+];
+
+/* ================================================================
+   所持データの保存・読み込み
+   { [emoteId]: [1,3,4] } のように、所持しているレベル番号だけを配列で持つ。
+   レベル3を飛ばしてレベル4だけ所持している、といった非連続な所持にも対応できる。
+   ================================================================ */
+const OWNED_KEY = nsKey('emoteOwned_v1');
+
+function loadOwned() {
+  try {
+    const data = JSON.parse(localStorage.getItem(OWNED_KEY));
+    return (data && typeof data === 'object') ? data : {};
+  } catch (_) { return {}; }
+}
+function saveOwned(data) {
+  try { localStorage.setItem(OWNED_KEY, JSON.stringify(data)); } catch (_) { /* noop */ }
+}
+
+function toggleLevel(emoteId, level) {
+  const data = loadOwned();
+  const owned = new Set(data[emoteId] || []);
+  if (owned.has(level)) owned.delete(level); else owned.add(level);
+  const arr = Array.from(owned).sort((a, b) => a - b);
+  if (arr.length === 0) delete data[emoteId];
+  else data[emoteId] = arr;
+  saveOwned(data);
+  renderList();
+}
+
+function getStats() {
+  const data = loadOwned();
+  let owned = 0, total = 0;
+  EMOTES_DATA.forEach(e => {
+    total += e.maxLevel;
+    owned += (data[e.id] || []).length;
+  });
+  return { owned, total, pct: total > 0 ? Math.round((owned / total) * 100) : 0 };
+}
+
+function renderList() {
+  const data = loadOwned();
+  const search = document.getElementById('searchName').value.trim().toLowerCase();
+  const filter = document.getElementById('filterStatus').value;
+
+  const filtered = EMOTES_DATA.filter(e => {
+    if (search && !e.name.toLowerCase().includes(search) && !e.nameEn.toLowerCase().includes(search)) return false;
+    const ownedCount = (data[e.id] || []).length;
+    if (filter === 'complete' && ownedCount !== e.maxLevel) return false;
+    if (filter === 'partial' && (ownedCount === 0 || ownedCount === e.maxLevel)) return false;
+    if (filter === 'none' && ownedCount !== 0) return false;
+    return true;
+  });
+
+  const html = filtered.map(e => {
+    const ownedLevels = new Set(data[e.id] || []);
+    const ownedCount = ownedLevels.size;
+    const isComplete = ownedCount === e.maxLevel;
+    const levelBtns = [];
+    for (let lv = 1; lv <= e.maxLevel; lv++) {
+      levelBtns.push(`<button type="button" class="lv-btn ${ownedLevels.has(lv) ? 'is-owned' : ''}" onclick="toggleLevel('${e.id}', ${lv})">${lv}</button>`);
+    }
+    return `
+      <div class="emote-card ${isComplete ? 'is-complete' : ''}">
+        <div class="emote-info">
+          <div class="emote-name">${escapeHtml(e.name)}</div>
+          <div class="emote-name-en">${escapeHtml(e.nameEn)}</div>
+          <div class="emote-sub">${isComplete ? '✓ コンプリート' : `${ownedCount} / ${e.maxLevel} レベル所持`}</div>
+        </div>
+        <div class="lv-row">${levelBtns.join('')}</div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('emoteList').innerHTML = html || '<div class="empty-message">条件に一致するエモートがありません。</div>';
+  document.getElementById('listCountLabel').textContent = `${filtered.length} / ${EMOTES_DATA.length}件`;
+
+  const stats = getStats();
+  document.getElementById('hdrCount').textContent = `${stats.owned} / ${stats.total} レベル所持`;
+  document.getElementById('hdrPct').textContent = `${stats.pct}%`;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  pfRenderBar();
+  renderList();
+});
+</script>
+</body>
+</html>
