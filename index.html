@@ -36,12 +36,14 @@
     }
 
     /* ── Navigation bar ────────────────────────── */
-    nav {
+    body > nav {
       position: sticky; top: 0; z-index: 20;
       background: rgba(242,242,247,0.88); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
       border-bottom: 0.5px solid var(--sep); padding: 14px 20px 12px;
       display: flex; align-items: center; justify-content: space-between;
     }
+    /* サイドバー内の<nav>はリンクを縦積みにする（上のセレクタが波及しないよう明示的に指定） */
+    .sidebar nav { display: flex; flex-direction: column; }
     .nav-title { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; }
     .sidebar-toggle-btn {
       background: var(--card); border: 1px solid var(--sep); border-radius: var(--r-sm);
@@ -149,6 +151,51 @@
     }
     .sec-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-2); }
 
+    /* ── 表示切替（グリッド／リスト） ───────────────── */
+    .view-toggle { display: flex; background: var(--bg); border-radius: 999px; padding: 3px; gap: 2px; flex-shrink: 0; }
+    .view-toggle-btn {
+      font-size: 12px; font-weight: 600; color: var(--text-2);
+      padding: 7px 12px; border-radius: 999px; transition: background 0.15s, color 0.15s;
+    }
+    .view-toggle-btn.active { background: var(--card); color: var(--text); font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+
+    /* ── Emote Grid（画像タイル形式・PNG追加後に使う想定） ───────── */
+    .emote-grid {
+      display: none; grid-template-columns: repeat(auto-fill, minmax(82px, 1fr));
+      gap: 10px; align-items: start;
+    }
+    .emote-tile { display: flex; flex-direction: column; gap: 5px; }
+    .emote-tile-frame {
+      position: relative; aspect-ratio: 1 / 1; overflow: hidden;
+      background: var(--card); border-radius: var(--r-sm);
+      border: 2px solid transparent; box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    }
+    .emote-tile-frame.is-complete { border-color: var(--green); }
+    .emote-tile-img-wrap {
+      position: absolute; inset: 0; z-index: 1;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--bg); filter: grayscale(1) opacity(0.4); transition: filter 0.15s;
+    }
+    .emote-tile-frame.is-complete .emote-tile-img-wrap { filter: none; }
+    .emote-tile-img-wrap img { width: 100%; height: 100%; object-fit: contain; padding: 14%; display: block; }
+    .emote-tile-img-wrap.img-fallback img { display: none; }
+    .emote-tile-fallback { display: none; font-size: 26px; }
+    .emote-tile-img-wrap.img-fallback .emote-tile-fallback { display: block; }
+    .emote-tile-levels {
+      position: absolute; bottom: 4px; left: 0; right: 0; z-index: 2;
+      display: flex; justify-content: center; flex-wrap: wrap; gap: 2px; padding: 0 4px;
+    }
+    .tile-lv-dot {
+      width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(255,255,255,0.85); border: 1px solid var(--text-3); cursor: pointer;
+    }
+    .tile-lv-dot.is-owned { background: var(--green); border-color: var(--green); }
+    .emote-tile-name {
+      font-size: 10.5px; line-height: 1.3; text-align: center; color: var(--text-2);
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      overflow: hidden; padding: 0 1px;
+    }
+
     /* ── Emote List ─────────────────────────── */
     .emote-list { display: flex; flex-direction: column; gap: 8px; }
     .emote-card {
@@ -253,17 +300,31 @@
           <option value="none">未所持のみ</option>
         </select>
       </div>
+      <div class="control-row">
+        <span class="control-label">エリア</span>
+        <select class="select-box" id="filterLocation" onchange="renderList()">
+          <option value="all">すべてのエリア</option>
+        </select>
+      </div>
     </div>
 
     <div class="list-header-row">
       <span class="sec-label">エモート一覧</span>
       <span class="sec-label" id="listCountLabel"></span>
     </div>
+    <div class="list-header-row" style="padding-top:0;">
+      <div class="view-toggle">
+        <button type="button" class="view-toggle-btn" id="viewGridBtn" onclick="setViewMode('grid')">🔳 グリッド</button>
+        <button type="button" class="view-toggle-btn" id="viewListBtn" onclick="setViewMode('list')">📋 リスト</button>
+      </div>
+    </div>
 
+    <div class="emote-grid" id="emoteGrid"><!-- JS --></div>
     <div class="emote-list" id="emoteList"><!-- JS --></div>
 
     <div class="draft-notice">
-      ⚠️ エモート一覧はWeb上の情報をもとに作成した たたき台 です。名称・最大レベル・抜け漏れなどに誤りが含まれる可能性があります。特に一覧の終盤（放浪カーニバル・星々の展示など比較的新しいエリア）の日本語名は仮訳です。
+      ⚠️ エモート一覧はWeb上の情報をもとに作成した たたき台 です。名称・最大レベル・抜け漏れなどに誤りが含まれる可能性があります。特に一覧の終盤（放浪カーニバル・星々の展示など比較的新しいエリア）の日本語名は仮訳です。<br>
+      「エリア」は入手できる場所（恒常精霊は地方内のエリア名、季節精霊はそのシーズン特有のエリア名）を示しており、正式なシーズン名そのものではありません。また、どの精霊から習うかは今回まだ反映できていません。
     </div>
 
   </div>
@@ -446,129 +507,133 @@ function closeSidebarMobile() {
    maxLevel は基本4ですが、一部のエモートは1・2・6など例外があります
    （レベル3を飛ばしてレベル4だけ所持している等の非連続所持にも対応するため、
    各レベルは独立したチェックとして保存します）。
+   location は入手できるエリア名（恒常精霊の場合は地方内のエリア名、
+   季節精霊の場合はそのシーズン特有のエリア名）です。正式な「シーズン名」
+   （例：想いを編む季節）そのものではなく、Sky Wikiのエリア表記をそのまま
+   使っています（精霊名までは今回反映できていません）。
    ================================================================ */
 const EMOTES_DATA = [
-  { id: 'emote_001', name: '座る', nameEn: 'Sit', maxLevel: 1 },
-  { id: 'emote_002', name: '指さし', nameEn: 'Point', maxLevel: 4 },
-  { id: 'emote_003', name: 'おいで', nameEn: 'Come', maxLevel: 4 },
-  { id: 'emote_004', name: '固辞', nameEn: 'No Thanks', maxLevel: 4 },
-  { id: 'emote_005', name: 'ようこそ', nameEn: 'Welcome', maxLevel: 4 },
-  { id: 'emote_006', name: 'うなずく', nameEn: 'Nod', maxLevel: 4 },
-  { id: 'emote_007', name: 'チッチッチ', nameEn: 'Scold', maxLevel: 4 },
-  { id: 'emote_008', name: '蝶々', nameEn: 'Butterfly', maxLevel: 4 },
-  { id: 'emote_009', name: '拍手', nameEn: 'Clap', maxLevel: 4 },
-  { id: 'emote_010', name: '手を振る', nameEn: 'Wave', maxLevel: 6 },
-  { id: 'emote_011', name: '笑う', nameEn: 'Laugh', maxLevel: 4 },
-  { id: 'emote_012', name: 'あくび', nameEn: 'Yawn', maxLevel: 4 },
-  { id: 'emote_013', name: '汗拭き', nameEn: 'Wipe Brow', maxLevel: 4 },
-  { id: 'emote_014', name: '火を掲げる', nameEn: 'Teamwork', maxLevel: 1 },
-  { id: 'emote_015', name: '投げキッス', nameEn: 'Blow Kiss', maxLevel: 4 },
-  { id: 'emote_016', name: '感謝', nameEn: 'Grateful', maxLevel: 4 },
-  { id: 'emote_017', name: '腹つづみ', nameEn: 'Belly Scratch', maxLevel: 4 },
-  { id: 'emote_018', name: '含み笑い', nameEn: 'Chuckle', maxLevel: 4 },
-  { id: 'emote_019', name: '凍える', nameEn: 'Shiver', maxLevel: 4 },
-  { id: 'emote_020', name: 'かくれんぼ', nameEn: 'Hide and Seek', maxLevel: 1 },
-  { id: 'emote_021', name: '怒る', nameEn: 'Angry', maxLevel: 4 },
-  { id: 'emote_022', name: '恥じらう', nameEn: 'Shy', maxLevel: 4 },
-  { id: 'emote_023', name: 'ショック', nameEn: 'Shocked', maxLevel: 4 },
-  { id: 'emote_024', name: '謝る', nameEn: 'Apologize', maxLevel: 4 },
-  { id: 'emote_025', name: '泣く', nameEn: 'Crying', maxLevel: 6 },
-  { id: 'emote_026', name: '歌舞伎風', nameEn: 'Kabuki', maxLevel: 4 },
-  { id: 'emote_027', name: '肩をすくめる', nameEn: 'Shrug', maxLevel: 4 },
-  { id: 'emote_028', name: 'ふきげん', nameEn: 'Grumpy', maxLevel: 4 },
-  { id: 'emote_029', name: 'そっと覗く', nameEn: 'Peek', maxLevel: 4 },
-  { id: 'emote_030', name: 'ひゃー', nameEn: 'Eww', maxLevel: 4 },
-  { id: 'emote_031', name: '顔を覆う', nameEn: 'Facepalm', maxLevel: 4 },
-  { id: 'emote_032', name: '逆立ち', nameEn: 'Handstand', maxLevel: 4 },
-  { id: 'emote_033', name: '宙返り', nameEn: 'Backflip', maxLevel: 4 },
-  { id: 'emote_034', name: 'お辞儀', nameEn: 'Bow', maxLevel: 4 },
-  { id: 'emote_035', name: '応援', nameEn: 'Cheer', maxLevel: 4 },
-  { id: 'emote_036', name: 'わーい', nameEn: 'Leap', maxLevel: 4 },
-  { id: 'emote_037', name: 'トリプルアクセル', nameEn: 'Triple Axel', maxLevel: 4 },
-  { id: 'emote_038', name: 'おめでとう', nameEn: 'Confetti', maxLevel: 4 },
-  { id: 'emote_039', name: 'ブギーダンス', nameEn: 'Boogie Dance', maxLevel: 4 },
-  { id: 'emote_040', name: 'スピンダンス', nameEn: 'Spin Dance', maxLevel: 4 },
-  { id: 'emote_041', name: 'ジャグリング', nameEn: 'Juggle', maxLevel: 4 },
-  { id: 'emote_042', name: '蟹歩き', nameEn: 'Crab Walk', maxLevel: 4 },
-  { id: 'emote_043', name: 'ガッツ！', nameEn: 'Rally Cheer', maxLevel: 4 },
-  { id: 'emote_044', name: '旋舞スピン', nameEn: 'Spin Trick', maxLevel: 4 },
-  { id: 'emote_045', name: 'ショーダンス', nameEn: 'Show Dance', maxLevel: 4 },
-  { id: 'emote_046', name: '身をかがめる', nameEn: 'Duck', maxLevel: 4 },
-  { id: 'emote_047', name: '気絶', nameEn: 'Faint', maxLevel: 4 },
-  { id: 'emote_048', name: 'リスペクト', nameEn: 'Respect', maxLevel: 4 },
-  { id: 'emote_049', name: '見回す', nameEn: 'Look Around', maxLevel: 4 },
-  { id: 'emote_050', name: '敬礼', nameEn: 'Salute', maxLevel: 4 },
-  { id: 'emote_051', name: '了解！', nameEn: 'Acknowledge', maxLevel: 4 },
-  { id: 'emote_052', name: 'カンフー', nameEn: 'Kung Fu', maxLevel: 4 },
-  { id: 'emote_053', name: '行かないで', nameEn: "Don't Go!", maxLevel: 4 },
-  { id: 'emote_054', name: 'ばあ！！', nameEn: 'Boo', maxLevel: 4 },
-  { id: 'emote_055', name: 'ほこり払い', nameEn: 'Dust Off', maxLevel: 4 },
-  { id: 'emote_056', name: '胸をたたく', nameEn: 'Chest Pound', maxLevel: 4 },
-  { id: 'emote_057', name: '行進', nameEn: 'Marching', maxLevel: 4 },
-  { id: 'emote_058', name: '念動力', nameEn: 'Telekinesis', maxLevel: 4 },
-  { id: 'emote_059', name: '浮遊', nameEn: 'Float', maxLevel: 4 },
-  { id: 'emote_060', name: '祈る', nameEn: 'Pray', maxLevel: 4 },
-  { id: 'emote_061', name: '太陽礼拝', nameEn: 'Yoga', maxLevel: 4 },
-  { id: 'emote_062', name: 'しーっ', nameEn: 'Shush', maxLevel: 4 },
-  { id: 'emote_063', name: 'スパークル', nameEn: 'Sparkler', maxLevel: 4 },
-  { id: 'emote_064', name: '考え中', nameEn: 'Thinking', maxLevel: 4 },
-  { id: 'emote_065', name: '居眠り', nameEn: 'Doze', maxLevel: 4 },
-  { id: 'emote_066', name: 'バランス', nameEn: 'Balance', maxLevel: 4 },
-  { id: 'emote_067', name: '深呼吸', nameEn: 'Deep Breath', maxLevel: 4 },
-  { id: 'emote_068', name: 'しゃぼん玉', nameEn: 'Bubbles', maxLevel: 4 },
-  { id: 'emote_069', name: '手招き', nameEn: 'Beckon', maxLevel: 4 },
-  { id: 'emote_070', name: 'ご満悦', nameEn: 'Gloat', maxLevel: 4 },
-  { id: 'emote_071', name: 'ストレッチ', nameEn: 'Stretch', maxLevel: 4 },
-  { id: 'emote_072', name: 'うなだれる', nameEn: 'Slouch', maxLevel: 4 },
-  { id: 'emote_073', name: 'くしゃみ', nameEn: 'Sneeze', maxLevel: 4 },
-  { id: 'emote_074', name: 'しめしめ', nameEn: 'Hand-Rub', maxLevel: 4 },
-  { id: 'emote_075', name: 'ジャジャーン', nameEn: 'Voilà', maxLevel: 4 },
-  { id: 'emote_076', name: '誘導', nameEn: 'Navigate', maxLevel: 4 },
-  { id: 'emote_077', name: '落ち着いて', nameEn: 'Calm Down', maxLevel: 4 },
-  { id: 'emote_078', name: '邪悪な笑い', nameEn: 'Evil Laugh', maxLevel: 4 },
-  { id: 'emote_079', name: '痛い！', nameEn: 'Ouch', maxLevel: 4 },
-  { id: 'emote_080', name: '不安', nameEn: 'Anxious', maxLevel: 4 },
-  { id: 'emote_081', name: 'ヘッドバンギング', nameEn: 'Headbob', maxLevel: 4 },
-  { id: 'emote_082', name: 'うわー！', nameEn: 'Awww', maxLevel: 4 },
-  { id: 'emote_083', name: '光を振る', nameEn: 'Waving Light', maxLevel: 4 },
-  { id: 'emote_084', name: '持ち上げる', nameEn: 'Raise the Roof', maxLevel: 4 },
-  { id: 'emote_085', name: 'クルクル', nameEn: 'Twirl', maxLevel: 4 },
-  { id: 'emote_086', name: '手拍子', nameEn: 'Rhythmic Clap', maxLevel: 4 },
-  { id: 'emote_087', name: '指揮', nameEn: 'Conduct', maxLevel: 4 },
-  { id: 'emote_088', name: 'サイレント拍手', nameEn: 'Silent Clap', maxLevel: 4 },
-  { id: 'emote_089', name: 'スキップ', nameEn: 'Skipping', maxLevel: 4 },
-  { id: 'emote_090', name: '懇願', nameEn: 'Pleading', maxLevel: 4 },
-  { id: 'emote_091', name: 'ぬき足', nameEn: 'Tiptoeing', maxLevel: 4 },
-  { id: 'emote_092', name: '嘆く', nameEn: 'Grieving', maxLevel: 4 },
-  { id: 'emote_093', name: 'フットバック', nameEn: 'Hacky Sack', maxLevel: 4 },
-  { id: 'emote_094', name: 'でんぐり返し', nameEn: 'Somersault', maxLevel: 4 },
-  { id: 'emote_095', name: 'とぼとぼ歩き', nameEn: 'Moping', maxLevel: 4 },
-  { id: 'emote_096', name: '懸垂', nameEn: 'Pull-up', maxLevel: 4 },
-  { id: 'emote_097', name: '上機嫌', nameEn: 'Jolly Dance', maxLevel: 4 },
-  { id: 'emote_098', name: '目隠しバランスポーズ', nameEn: 'Blindfold Balance Pose', maxLevel: 4 },
-  { id: 'emote_099', name: 'キュア・フォー・ミー', nameEn: 'Cure for Me Dance', maxLevel: 2 },
-  { id: 'emote_100', name: '口笛', nameEn: 'Whistle', maxLevel: 4 },
-  { id: 'emote_101', name: '手足を曲げる', nameEn: 'Flex', maxLevel: 4 },
-  { id: 'emote_102', name: '浮遊スピン', nameEn: 'Float Spin', maxLevel: 4 },
-  { id: 'emote_103', name: '本を読む', nameEn: 'Read', maxLevel: 4 },
-  { id: 'emote_104', name: '側転', nameEn: 'Cartwheel', maxLevel: 4 },
-  { id: 'emote_105', name: 'ハートジェスチャー', nameEn: 'Heart Gesture', maxLevel: 4 },
-  { id: 'emote_106', name: 'アップダンス', nameEn: 'Hype Dance', maxLevel: 4 },
-  { id: 'emote_107', name: '咳き込む', nameEn: 'Cough', maxLevel: 4 },
-  { id: 'emote_108', name: '驚き', nameEn: 'Surprised', maxLevel: 4 },
-  { id: 'emote_109', name: 'レースフラッグ', nameEn: 'Flag Signal', maxLevel: 4 },
-  { id: 'emote_110', name: '飛行ごっこ', nameEn: 'Flight Run', maxLevel: 4 },
-  { id: 'emote_111', name: '海月ダンス', nameEn: 'Jellyfish Dance', maxLevel: 4 },
-  { id: 'emote_112', name: 'くらくら', nameEn: 'Dizzy', maxLevel: 4 },
-  { id: 'emote_113', name: '小さく拍手', nameEn: 'Cute Clap', maxLevel: 4 },
-  { id: 'emote_114', name: '承認（仮訳）', nameEn: 'Approve', maxLevel: 4 },
-  { id: 'emote_115', name: 'ブレイクダンス（仮訳）', nameEn: 'Break Dance', maxLevel: 4 },
-  { id: 'emote_116', name: 'ボール回し（仮訳）', nameEn: 'Ball Spin Trick', maxLevel: 4 },
-  { id: 'emote_117', name: 'メモを取る（仮訳）', nameEn: 'Take Notes', maxLevel: 4 },
-  { id: 'emote_118', name: 'イライラ（仮訳）', nameEn: 'Frustration', maxLevel: 4 },
-  { id: 'emote_119', name: 'ゆっくり歩く（仮訳）', nameEn: 'Slow Walk', maxLevel: 4 },
-  { id: 'emote_120', name: '日向ぼっこ（仮訳）', nameEn: 'Bask', maxLevel: 4 },
-  { id: 'emote_121', name: '絵を描く（仮訳）', nameEn: 'Draw', maxLevel: 4 },
+  { id: 'emote_001', name: '座る', nameEn: 'Sit', maxLevel: 1, location: 'デフォルト' },
+  { id: 'emote_002', name: '指さし', nameEn: 'Point', maxLevel: 4, location: '孤島' },
+  { id: 'emote_003', name: 'おいで', nameEn: 'Come', maxLevel: 4, location: '孤島' },
+  { id: 'emote_004', name: '固辞', nameEn: 'No Thanks', maxLevel: 4, location: '孤島' },
+  { id: 'emote_005', name: 'ようこそ', nameEn: 'Welcome', maxLevel: 4, location: '孤島' },
+  { id: 'emote_006', name: 'うなずく', nameEn: 'Nod', maxLevel: 4, location: '忘れられた方舟' },
+  { id: 'emote_007', name: 'チッチッチ', nameEn: 'Scold', maxLevel: 4, location: '雨林の開拓地' },
+  { id: 'emote_008', name: '蝶々', nameEn: 'Butterfly', maxLevel: 4, location: '蝶々の住処' },
+  { id: 'emote_009', name: '拍手', nameEn: 'Clap', maxLevel: 4, location: '草原の村' },
+  { id: 'emote_010', name: '手を振る', nameEn: 'Wave', maxLevel: 6, location: '草原の村' },
+  { id: 'emote_011', name: '笑う', nameEn: 'Laugh', maxLevel: 4, location: '草原の村' },
+  { id: 'emote_012', name: 'あくび', nameEn: 'Yawn', maxLevel: 4, location: '草原の村' },
+  { id: 'emote_013', name: '汗拭き', nameEn: 'Wipe Brow', maxLevel: 4, location: '草原の洞窟' },
+  { id: 'emote_014', name: '火を掲げる', nameEn: 'Teamwork', maxLevel: 1, location: '8人エレベーター' },
+  { id: 'emote_015', name: '投げキッス', nameEn: 'Blow Kiss', maxLevel: 4, location: '雨林の墓場' },
+  { id: 'emote_016', name: '感謝', nameEn: 'Grateful', maxLevel: 4, location: '楽園の島々' },
+  { id: 'emote_017', name: '腹つづみ', nameEn: 'Belly Scratch', maxLevel: 4, location: '楽園の島々' },
+  { id: 'emote_018', name: '含み笑い', nameEn: 'Chuckle', maxLevel: 4, location: '雨林の墓場' },
+  { id: 'emote_019', name: '凍える', nameEn: 'Shiver', maxLevel: 4, location: '雨林の開拓地' },
+  { id: 'emote_020', name: 'かくれんぼ', nameEn: 'Hide and Seek', maxLevel: 1, location: '雨林の小川' },
+  { id: 'emote_021', name: '怒る', nameEn: 'Angry', maxLevel: 4, location: '雨林の小川' },
+  { id: 'emote_022', name: '恥じらう', nameEn: 'Shy', maxLevel: 4, location: '雨林の墓場' },
+  { id: 'emote_023', name: 'ショック', nameEn: 'Shocked', maxLevel: 4, location: '雨林の墓場' },
+  { id: 'emote_024', name: '謝る', nameEn: 'Apologize', maxLevel: 4, location: '雨林の墓場' },
+  { id: 'emote_025', name: '泣く', nameEn: 'Crying', maxLevel: 6, location: '雨林の墓場' },
+  { id: 'emote_026', name: '歌舞伎風', nameEn: 'Kabuki', maxLevel: 4, location: '雨林の小川' },
+  { id: 'emote_027', name: '肩をすくめる', nameEn: 'Shrug', maxLevel: 4, location: '忘れられた方舟' },
+  { id: 'emote_028', name: 'ふきげん', nameEn: 'Grumpy', maxLevel: 4, location: '楽園の島々' },
+  { id: 'emote_029', name: 'そっと覗く', nameEn: 'Peek', maxLevel: 4, location: '夢見の町' },
+  { id: 'emote_030', name: 'ひゃー', nameEn: 'Eww', maxLevel: 4, location: '雨林の小川' },
+  { id: 'emote_031', name: '顔を覆う', nameEn: 'Facepalm', maxLevel: 4, location: '雨林の開拓地' },
+  { id: 'emote_032', name: '逆立ち', nameEn: 'Handstand', maxLevel: 4, location: '城塞都市' },
+  { id: 'emote_033', name: '宙返り', nameEn: 'Backflip', maxLevel: 4, location: '城塞都市' },
+  { id: 'emote_034', name: 'お辞儀', nameEn: 'Bow', maxLevel: 4, location: '円形劇場' },
+  { id: 'emote_035', name: '応援', nameEn: 'Cheer', maxLevel: 4, location: '円形劇場' },
+  { id: 'emote_036', name: 'わーい', nameEn: 'Leap', maxLevel: 4, location: 'アイスリンク' },
+  { id: 'emote_037', name: 'トリプルアクセル', nameEn: 'Triple Axel', maxLevel: 4, location: 'アイスリンク' },
+  { id: 'emote_038', name: 'おめでとう', nameEn: 'Confetti', maxLevel: 4, location: '蝶々の住処' },
+  { id: 'emote_039', name: 'ブギーダンス', nameEn: 'Boogie Dance', maxLevel: 4, location: '孤島' },
+  { id: 'emote_040', name: 'スピンダンス', nameEn: 'Spin Dance', maxLevel: 4, location: '鳥の塔' },
+  { id: 'emote_041', name: 'ジャグリング', nameEn: 'Juggle', maxLevel: 4, location: 'アイスリンク' },
+  { id: 'emote_042', name: '蟹歩き', nameEn: 'Crab Walk', maxLevel: 4, location: '忘れられた方舟' },
+  { id: 'emote_043', name: 'ガッツ！', nameEn: 'Rally Cheer', maxLevel: 4, location: '楽園の島々' },
+  { id: 'emote_044', name: '旋舞スピン', nameEn: 'Spin Trick', maxLevel: 4, location: '夢見の町' },
+  { id: 'emote_045', name: 'ショーダンス', nameEn: 'Show Dance', maxLevel: 4, location: '夢見の町' },
+  { id: 'emote_046', name: '身をかがめる', nameEn: 'Duck', maxLevel: 4, location: '倒壊した祠' },
+  { id: 'emote_047', name: '気絶', nameEn: 'Faint', maxLevel: 4, location: '倒壊した祠' },
+  { id: 'emote_048', name: 'リスペクト', nameEn: 'Respect', maxLevel: 4, location: '墓所' },
+  { id: 'emote_049', name: '見回す', nameEn: 'Look Around', maxLevel: 4, location: '戦場' },
+  { id: 'emote_050', name: '敬礼', nameEn: 'Salute', maxLevel: 4, location: '座礁船' },
+  { id: 'emote_051', name: '了解！', nameEn: 'Acknowledge', maxLevel: 4, location: '暗黒竜1匹エリア' },
+  { id: 'emote_052', name: 'カンフー', nameEn: 'Kung Fu', maxLevel: 4, location: '書庫の4階' },
+  { id: 'emote_053', name: '行かないで', nameEn: "Don't Go!", maxLevel: 4, location: '墓所' },
+  { id: 'emote_054', name: 'ばあ！！', nameEn: 'Boo', maxLevel: 4, location: '忘れられた方舟' },
+  { id: 'emote_055', name: 'ほこり払い', nameEn: 'Dust Off', maxLevel: 4, location: '預言者の石窟' },
+  { id: 'emote_056', name: '胸をたたく', nameEn: 'Chest Pound', maxLevel: 4, location: '預言者の石窟' },
+  { id: 'emote_057', name: '行進', nameEn: 'Marching', maxLevel: 4, location: '雨林の小川' },
+  { id: 'emote_058', name: '念動力', nameEn: 'Telekinesis', maxLevel: 4, location: '書庫の2階' },
+  { id: 'emote_059', name: '浮遊', nameEn: 'Float', maxLevel: 4, location: '書庫の4階' },
+  { id: 'emote_060', name: '祈る', nameEn: 'Pray', maxLevel: 4, location: '書庫の1階' },
+  { id: 'emote_061', name: '太陽礼拝', nameEn: 'Yoga', maxLevel: 4, location: '草原の洞窟' },
+  { id: 'emote_062', name: 'しーっ', nameEn: 'Shush', maxLevel: 4, location: '書庫の4階' },
+  { id: 'emote_063', name: 'スパークル', nameEn: 'Sparkler', maxLevel: 4, location: '峡谷の神殿' },
+  { id: 'emote_064', name: '考え中', nameEn: 'Thinking', maxLevel: 4, location: '書庫の1階' },
+  { id: 'emote_065', name: '居眠り', nameEn: 'Doze', maxLevel: 4, location: '忘れられた方舟' },
+  { id: 'emote_066', name: 'バランス', nameEn: 'Balance', maxLevel: 4, location: '預言者の石窟' },
+  { id: 'emote_067', name: '深呼吸', nameEn: 'Deep Breath', maxLevel: 4, location: '預言者の石窟' },
+  { id: 'emote_068', name: 'しゃぼん玉', nameEn: 'Bubbles', maxLevel: 4, location: '雨林の墓場' },
+  { id: 'emote_069', name: '手招き', nameEn: 'Beckon', maxLevel: 4, location: '星月夜の砂漠' },
+  { id: 'emote_070', name: 'ご満悦', nameEn: 'Gloat', maxLevel: 4, location: '星月夜の砂漠' },
+  { id: 'emote_071', name: 'ストレッチ', nameEn: 'Stretch', maxLevel: 4, location: '星月夜の砂漠' },
+  { id: 'emote_072', name: 'うなだれる', nameEn: 'Slouch', maxLevel: 4, location: '星月夜の砂漠' },
+  { id: 'emote_073', name: 'くしゃみ', nameEn: 'Sneeze', maxLevel: 4, location: '星月夜の砂漠' },
+  { id: 'emote_074', name: 'しめしめ', nameEn: 'Hand-Rub', maxLevel: 4, location: '星月夜の砂漠' },
+  { id: 'emote_075', name: 'ジャジャーン', nameEn: 'Voilà', maxLevel: 4, location: '風の街道' },
+  { id: 'emote_076', name: '誘導', nameEn: 'Navigate', maxLevel: 4, location: '風の街道' },
+  { id: 'emote_077', name: '落ち着いて', nameEn: 'Calm Down', maxLevel: 4, location: '秘宝の環礁' },
+  { id: 'emote_078', name: '邪悪な笑い', nameEn: 'Evil Laugh', maxLevel: 4, location: '秘宝の環礁' },
+  { id: 'emote_079', name: '痛い！', nameEn: 'Ouch', maxLevel: 4, location: '秘宝の環礁' },
+  { id: 'emote_080', name: '不安', nameEn: 'Anxious', maxLevel: 4, location: '秘宝の環礁' },
+  { id: 'emote_081', name: 'ヘッドバンギング', nameEn: 'Headbob', maxLevel: 4, location: '夢見の劇場' },
+  { id: 'emote_082', name: 'うわー！', nameEn: 'Awww', maxLevel: 4, location: '夢見の劇場' },
+  { id: 'emote_083', name: '光を振る', nameEn: 'Waving Light', maxLevel: 4, location: '円形劇場' },
+  { id: 'emote_084', name: '持ち上げる', nameEn: 'Raise the Roof', maxLevel: 4, location: '円形劇場' },
+  { id: 'emote_085', name: 'クルクル', nameEn: 'Twirl', maxLevel: 4, location: '円形劇場' },
+  { id: 'emote_086', name: '手拍子', nameEn: 'Rhythmic Clap', maxLevel: 4, location: '円形劇場' },
+  { id: 'emote_087', name: '指揮', nameEn: 'Conduct', maxLevel: 4, location: '円形劇場' },
+  { id: 'emote_088', name: 'サイレント拍手', nameEn: 'Silent Clap', maxLevel: 4, location: '円形劇場' },
+  { id: 'emote_089', name: 'スキップ', nameEn: 'Skipping', maxLevel: 4, location: '円形劇場' },
+  { id: 'emote_090', name: '懇願', nameEn: 'Pleading', maxLevel: 4, location: '君憶う保存庫' },
+  { id: 'emote_091', name: 'ぬき足', nameEn: 'Tiptoeing', maxLevel: 4, location: '君憶う保存庫' },
+  { id: 'emote_092', name: '嘆く', nameEn: 'Grieving', maxLevel: 4, location: '君憶う保存庫' },
+  { id: 'emote_093', name: 'フットバック', nameEn: 'Hacky Sack', maxLevel: 4, location: '孤島' },
+  { id: 'emote_094', name: 'でんぐり返し', nameEn: 'Somersault', maxLevel: 4, location: '孤島' },
+  { id: 'emote_095', name: 'とぼとぼ歩き', nameEn: 'Moping', maxLevel: 4, location: '孤島' },
+  { id: 'emote_096', name: '懸垂', nameEn: 'Pull-up', maxLevel: 4, location: '孤島' },
+  { id: 'emote_097', name: '上機嫌', nameEn: 'Jolly Dance', maxLevel: 4, location: '草原連峰' },
+  { id: 'emote_098', name: '目隠しバランスポーズ', nameEn: 'Blindfold Balance Pose', maxLevel: 4, location: '草原連峰' },
+  { id: 'emote_099', name: 'キュア・フォー・ミー', nameEn: 'Cure for Me Dance', maxLevel: 2, location: '円形劇場' },
+  { id: 'emote_100', name: '口笛', nameEn: 'Whistle', maxLevel: 4, location: '三日月オアシス' },
+  { id: 'emote_101', name: '手足を曲げる', nameEn: 'Flex', maxLevel: 4, location: '三日月オアシス' },
+  { id: 'emote_102', name: '浮遊スピン', nameEn: 'Float Spin', maxLevel: 4, location: '三日月オアシス' },
+  { id: 'emote_103', name: '本を読む', nameEn: 'Read', maxLevel: 4, location: 'ムーミン谷' },
+  { id: 'emote_104', name: '側転', nameEn: 'Cartwheel', maxLevel: 4, location: '花鳥郷' },
+  { id: 'emote_105', name: 'ハートジェスチャー', nameEn: 'Heart Gesture', maxLevel: 4, location: '花鳥郷' },
+  { id: 'emote_106', name: 'アップダンス', nameEn: 'Hype Dance', maxLevel: 4, location: '花鳥郷' },
+  { id: 'emote_107', name: '咳き込む', nameEn: 'Cough', maxLevel: 4, location: '青い鳥劇場' },
+  { id: 'emote_108', name: '驚き', nameEn: 'Surprised', maxLevel: 4, location: '青い鳥劇場' },
+  { id: 'emote_109', name: 'レースフラッグ', nameEn: 'Flag Signal', maxLevel: 4, location: '風の街道' },
+  { id: 'emote_110', name: '飛行ごっこ', nameEn: 'Flight Run', maxLevel: 4, location: '風の街道' },
+  { id: 'emote_111', name: '海月ダンス', nameEn: 'Jellyfish Dance', maxLevel: 4, location: '風の街道' },
+  { id: 'emote_112', name: 'くらくら', nameEn: 'Dizzy', maxLevel: 4, location: '風の街道' },
+  { id: 'emote_113', name: '小さく拍手', nameEn: 'Cute Clap', maxLevel: 4, location: '壊れし燈の保管庫' },
+  { id: 'emote_114', name: '承認（仮訳）', nameEn: 'Approve', maxLevel: 4, location: '放浪カーニバル（仮訳）' },
+  { id: 'emote_115', name: 'ブレイクダンス（仮訳）', nameEn: 'Break Dance', maxLevel: 4, location: '放浪カーニバル（仮訳）' },
+  { id: 'emote_116', name: 'ボール回し（仮訳）', nameEn: 'Ball Spin Trick', maxLevel: 4, location: '放浪カーニバル（仮訳）' },
+  { id: 'emote_117', name: 'メモを取る（仮訳）', nameEn: 'Take Notes', maxLevel: 4, location: '放浪カーニバル（仮訳）' },
+  { id: 'emote_118', name: 'イライラ（仮訳）', nameEn: 'Frustration', maxLevel: 4, location: '星々の展示（仮訳）' },
+  { id: 'emote_119', name: 'ゆっくり歩く（仮訳）', nameEn: 'Slow Walk', maxLevel: 4, location: '星々の展示（仮訳）' },
+  { id: 'emote_120', name: '日向ぼっこ（仮訳）', nameEn: 'Bask', maxLevel: 4, location: '星々の展示（仮訳）' },
+  { id: 'emote_121', name: '絵を描く（仮訳）', nameEn: 'Draw', maxLevel: 4, location: '星々の展示（仮訳）' },
 ];
 
 /* ================================================================
@@ -609,13 +674,44 @@ function getStats() {
   return { owned, total, pct: total > 0 ? Math.round((owned / total) * 100) : 0 };
 }
 
+/* ================================================================
+   表示モード（グリッド／リスト）
+   端末ごとの表示設定なのでプロフィールをまたいで共通（namespace化しない）
+   ================================================================ */
+const VIEW_MODE_KEY = 'emoteViewMode_v1';
+
+function getViewMode() {
+  try { return localStorage.getItem(VIEW_MODE_KEY) || 'list'; } catch (_) { return 'list'; }
+}
+function setViewMode(mode) {
+  try { localStorage.setItem(VIEW_MODE_KEY, mode); } catch (_) { /* noop */ }
+  renderList();
+}
+
+// エリア絞り込みのプルダウンを、データに登場する順番のまま重複なしで作る
+function populateLocationFilter() {
+  const select = document.getElementById('filterLocation');
+  const seen = new Set();
+  EMOTES_DATA.forEach(e => {
+    if (seen.has(e.location)) return;
+    seen.add(e.location);
+    const opt = document.createElement('option');
+    opt.value = e.location;
+    opt.textContent = e.location;
+    select.appendChild(opt);
+  });
+}
+
 function renderList() {
   const data = loadOwned();
   const search = document.getElementById('searchName').value.trim().toLowerCase();
   const filter = document.getElementById('filterStatus').value;
+  const location = document.getElementById('filterLocation').value;
+  const viewMode = getViewMode();
 
   const filtered = EMOTES_DATA.filter(e => {
     if (search && !e.name.toLowerCase().includes(search) && !e.nameEn.toLowerCase().includes(search)) return false;
+    if (location !== 'all' && e.location !== location) return false;
     const ownedCount = (data[e.id] || []).length;
     if (filter === 'complete' && ownedCount !== e.maxLevel) return false;
     if (filter === 'partial' && (ownedCount === 0 || ownedCount === e.maxLevel)) return false;
@@ -623,7 +719,7 @@ function renderList() {
     return true;
   });
 
-  const html = filtered.map(e => {
+  const listHtml = filtered.map(e => {
     const ownedLevels = new Set(data[e.id] || []);
     const ownedCount = ownedLevels.size;
     const isComplete = ownedCount === e.maxLevel;
@@ -635,14 +731,43 @@ function renderList() {
       <div class="emote-card ${isComplete ? 'is-complete' : ''}">
         <div class="emote-info">
           <div class="emote-name">${escapeHtml(e.name)}</div>
-          <div class="emote-name-en">${escapeHtml(e.nameEn)}</div>
+          <div class="emote-name-en">${escapeHtml(e.nameEn)} ／ ${escapeHtml(e.location)}</div>
           <div class="emote-sub">${isComplete ? '✓ コンプリート' : `${ownedCount} / ${e.maxLevel} レベル所持`}</div>
         </div>
         <div class="lv-row">${levelBtns.join('')}</div>
       </div>`;
   }).join('');
 
-  document.getElementById('emoteList').innerHTML = html || '<div class="empty-message">条件に一致するエモートがありません。</div>';
+  // グリッド表示：PNGアイコン未配置の間は onerror でプレースホルダー絵文字に切り替える
+  const gridHtml = filtered.map(e => {
+    const ownedLevels = new Set(data[e.id] || []);
+    const ownedCount = ownedLevels.size;
+    const isComplete = ownedCount === e.maxLevel;
+    const dots = [];
+    for (let lv = 1; lv <= e.maxLevel; lv++) {
+      dots.push(`<span class="tile-lv-dot ${ownedLevels.has(lv) ? 'is-owned' : ''}" title="Lv${lv}" onclick="event.stopPropagation(); toggleLevel('${e.id}', ${lv})"></span>`);
+    }
+    return `
+      <div class="emote-tile" title="${escapeHtml(e.location)}">
+        <div class="emote-tile-frame ${isComplete ? 'is-complete' : ''}">
+          <div class="emote-tile-img-wrap">
+            <img src="icons/${e.id}.png" alt="${escapeHtml(e.name)}" loading="lazy" onerror="this.parentElement.classList.add('img-fallback')">
+            <span class="emote-tile-fallback">🎭</span>
+          </div>
+          <div class="emote-tile-levels">${dots.join('')}</div>
+        </div>
+        <span class="emote-tile-name">${escapeHtml(e.name)}</span>
+      </div>`;
+  }).join('');
+
+  document.getElementById('emoteList').innerHTML = listHtml || '<div class="empty-message">条件に一致するエモートがありません。</div>';
+  document.getElementById('emoteGrid').innerHTML = gridHtml || '<div class="empty-message">条件に一致するエモートがありません。</div>';
+
+  document.getElementById('emoteList').style.display = viewMode === 'list' ? 'flex' : 'none';
+  document.getElementById('emoteGrid').style.display = viewMode === 'grid' ? 'grid' : 'none';
+  document.getElementById('viewListBtn').classList.toggle('active', viewMode === 'list');
+  document.getElementById('viewGridBtn').classList.toggle('active', viewMode === 'grid');
+
   document.getElementById('listCountLabel').textContent = `${filtered.length} / ${EMOTES_DATA.length}件`;
 
   const stats = getStats();
@@ -652,6 +777,7 @@ function renderList() {
 
 document.addEventListener('DOMContentLoaded', () => {
   pfRenderBar();
+  populateLocationFilter();
   renderList();
 });
 </script>
