@@ -232,6 +232,100 @@
       padding: 14px 16px; margin-top: 16px; font-size: 12.5px; color: var(--orange-d); line-height: 1.7;
     }
 
+    /* ── 達成率シェア（アイテム所持率管理と同じ仕組み） ─────── */
+    .feature-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .feature-btn {
+      flex: 1; min-width: 140px; background: var(--card); border-radius: var(--r);
+      padding: 14px 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); text-align: left;
+      display: flex; flex-direction: column; gap: 4px; cursor: pointer;
+    }
+    .feature-btn:active { transform: scale(0.965); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+    .feature-icon  { font-size: 26px; }
+    .feature-label { font-size: 14px; font-weight: 700; color: var(--text); }
+    .feature-desc  { font-size: 11px; color: var(--text-2); line-height: 1.45; }
+    .feature-btn.twitter { background: #000; }
+    .feature-btn.twitter .feature-label { color: #fff; }
+    .feature-btn.twitter .feature-desc  { color: rgba(255,255,255,0.68); }
+
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+      z-index: 1000; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-card {
+      width: 100%; max-width: 400px; max-height: 85vh; overflow-y: auto;
+      background: var(--card); border-radius: var(--r); padding: 20px; box-sizing: border-box;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .modal-title  { font-size: 17px; font-weight: 700; }
+    .modal-close  { font-size: 22px; color: var(--text-2); padding: 2px 6px; }
+
+    .action-row { display: flex; gap: 10px; margin-top: 14px; }
+    .action-btn {
+      flex: 1; padding: 12px; border-radius: var(--r-sm); font-size: 14px; font-weight: 700;
+      text-align: center; cursor: pointer; box-sizing: border-box;
+    }
+    .action-btn.primary   { background: var(--blue); color: #fff; }
+    .action-btn.secondary { background: var(--bg); color: var(--text); }
+    .action-btn.full      { width: 100%; }
+    .action-btn.twitter   { background: #000; color: #fff; }
+    a.action-btn { display: block; }
+
+    .preview-img { width: 100%; border-radius: 12px; margin: 10px 0; }
+
+    .toast {
+      position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%) translateY(10px);
+      background: rgba(28,28,30,0.92); color: #fff; padding: 12px 20px; border-radius: 999px;
+      font-size: 13.5px; font-weight: 600; z-index: 2000; opacity: 0; transition: opacity 0.25s, transform 0.25s;
+      pointer-events: none; white-space: nowrap; max-width: 90vw; text-overflow: ellipsis; overflow: hidden;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── シェア画像カード（画面外に生成してhtml2canvasで書き出す） ─── */
+    .export-card {
+      position: fixed; left: -9999px; top: 0; width: 560px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+      background: linear-gradient(135deg, var(--orange-d) 0%, var(--orange) 55%, #FFBB00 100%);
+      padding: 28px; border-radius: 28px; box-sizing: border-box;
+    }
+    .exp-brand { color: #fff; font-size: 12px; font-weight: 600; opacity: 0.85; letter-spacing: 0.3px; margin-bottom: 6px; }
+    .exp-hero { text-align: center; padding: 6px 0 18px; }
+    .exp-hero-pct { color: #fff; font-size: 52px; font-weight: 800; letter-spacing: -1px; line-height: 1; }
+    .exp-hero-label { color: rgba(255,255,255,0.85); font-size: 12px; margin-top: 6px; letter-spacing: 0.5px; }
+    .exp-hero-nums { color: #fff; font-size: 13px; margin-top: 10px; opacity: 0.92; }
+    .exp-hero-sub { color: #fff; font-size: 13px; margin-top: 4px; opacity: 0.92; }
+    .exp-comment {
+      color: #fff; background: rgba(255,255,255,0.16); border-radius: 14px;
+      padding: 10px 14px; font-size: 13px; line-height: 1.6; text-align: center;
+      margin-bottom: 4px; white-space: pre-wrap; word-break: break-word;
+    }
+    .exp-date { color: rgba(255,255,255,0.75); font-size: 10.5px; text-align: right; margin-top: 10px; }
+
+    /* ── 共有画像カスタマイズモーダル ─────────────── */
+    .customize-section-label {
+      font-size: 12px; font-weight: 700; color: var(--text-2);
+      margin: 16px 0 8px; text-transform: uppercase; letter-spacing: 0.4px;
+    }
+    .customize-section-label:first-child { margin-top: 0; }
+    .theme-swatch-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .theme-swatch {
+      width: 36px; height: 36px; border-radius: 50%; border: 2px solid transparent;
+      cursor: pointer; flex-shrink: 0; position: relative;
+    }
+    .theme-swatch.selected { border-color: var(--text); }
+    .theme-swatch.selected::after {
+      content: '✓'; position: absolute; inset: 0; display: flex;
+      align-items: center; justify-content: center; color: #fff;
+      font-size: 15px; font-weight: 800; text-shadow: 0 1px 2px rgba(0,0,0,0.35);
+    }
+    .customize-comment-input {
+      width: 100%; box-sizing: border-box; border: 1px solid var(--sep);
+      border-radius: var(--r-sm); padding: 10px 12px; font-size: 13.5px;
+      font-family: inherit; color: var(--text); resize: vertical; min-height: 60px;
+      background: var(--bg);
+    }
+
     footer {
       text-align: center; padding: 24px 16px; color: var(--text-2); font-size: 13px;
       border-top: 1px solid var(--sep); margin-top: 40px; line-height: 1.6;
@@ -313,6 +407,25 @@
       </div>
     </div>
 
+    <p class="sec-label" style="padding:22px 4px 8px;">達成率をシェア</p>
+    <div class="feature-row">
+      <button type="button" class="feature-btn" onclick="saveOverallAsImage()">
+        <span class="feature-icon">🖼️</span>
+        <span class="feature-label">画像で保存</span>
+        <span class="feature-desc">エモートの所持率を画像で保存</span>
+      </button>
+      <button type="button" class="feature-btn twitter" onclick="shareOverallOnTwitter()">
+        <span class="feature-icon">📤</span>
+        <span class="feature-label">Xでシェア</span>
+        <span class="feature-desc">所持率をXに投稿してみんなに自慢しよう</span>
+      </button>
+    </div>
+    <button type="button" class="feature-btn" style="margin-top:8px;" onclick="openCustomizeModal()">
+      <span class="feature-icon">🎨</span>
+      <span class="feature-label">カスタマイズして共有</span>
+      <span class="feature-desc">背景テーマ・コメントを自分好みに設定してから保存/共有できます</span>
+    </button>
+
     <div class="list-header-row">
       <span class="sec-label">エモート一覧</span>
       <span class="sec-label" id="listCountLabel"></span>
@@ -332,6 +445,53 @@
       「エリア」は入手できる場所（恒常精霊は地方内のエリア名、季節精霊はそのシーズン特有のエリア名）を示しており、正式なシーズン名そのものではありません。また、どの精霊から習うかは今回まだ反映できていません。
     </div>
 
+  </div>
+</div>
+
+<!-- ▸ 共有画像カスタマイズモーダル -->
+<div class="modal-overlay" id="customizeModal" onclick="if(event.target===this)closeModal('customizeModal')">
+  <div class="modal-card">
+    <div class="modal-header">
+      <span class="modal-title">🎨 画像をカスタマイズ</span>
+      <button class="modal-close" onclick="closeModal('customizeModal')">✕</button>
+    </div>
+
+    <div class="customize-section-label">背景テーマ</div>
+    <div class="theme-swatch-row" id="themeSwatchRow"><!-- JS --></div>
+
+    <div class="customize-section-label">コメント（任意）</div>
+    <textarea id="customizeComment" class="customize-comment-input" maxlength="120" placeholder="例）プレイヤーネーム：〇〇（未入力の場合は通常の文言になります）"></textarea>
+
+    <div class="action-row" style="margin-top:16px;">
+      <button class="action-btn primary full" onclick="saveOverallAsImage(true)">🖼️ この設定で画像保存</button>
+    </div>
+    <div class="action-row">
+      <button class="action-btn twitter full" onclick="shareOverallOnTwitter(true)">📤 この設定でXへシェア</button>
+    </div>
+  </div>
+</div>
+
+<!-- ▸ 画像保存プレビューモーダル -->
+<div class="modal-overlay" id="imagePreviewModal" onclick="if(event.target===this)closeModal('imagePreviewModal')">
+  <div class="modal-card">
+    <div class="modal-header">
+      <span class="modal-title" id="previewModalTitle">🖼️ 画像を保存</span>
+      <button class="modal-close" onclick="closeModal('imagePreviewModal')">✕</button>
+    </div>
+
+    <div class="hint" style="margin-top:0; display:flex; gap:8px; align-items:flex-start; font-size:12.5px; color:var(--text-2);">
+      <span>👆</span>
+      <span id="previewHintText">画像を長押し（PCの場合は右クリック）して「画像を保存」を選んでください</span>
+    </div>
+
+    <img id="previewImg" class="preview-img" src="" alt="保存用の画像" />
+
+    <div class="action-row">
+      <a id="previewDownloadLink" class="action-btn primary full" href="" download="">⬇️ ダウンロード</a>
+    </div>
+    <div class="action-row" id="previewTwitterRow" style="display:none;">
+      <a id="previewTwitterLink" class="action-btn twitter full" href="" target="_blank" rel="noopener noreferrer">📤 Xの投稿画面を開く</a>
+    </div>
   </div>
 </div>
 
@@ -693,6 +853,223 @@ function formatPct(pct) {
   if (pct <= 0) return '0%';
   if (pct >= 100) return '100%';
   return pct.toFixed(1) + '%';
+}
+
+/* ================================================================
+   汎用モーダル・トースト（アイテム所持率管理と同じ仕組み）
+   ================================================================ */
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.classList.add('show'), 10);
+  setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 2600);
+}
+
+/* ================================================================
+   達成率: 画像保存・Xシェア（アイテム所持率管理と同じ仕組み）
+   ================================================================ */
+const SITE_URL = 'https://taipak5000.github.io/emote/';
+const SHARE_HASHTAG = '#Skyエモート所持率';
+
+const SHARE_THEMES = {
+  orange: { label: 'オレンジ', grad: 'linear-gradient(135deg, var(--orange-d) 0%, var(--orange) 55%, #FFBB00 100%)' },
+  blue:   { label: 'ブルー',   grad: 'linear-gradient(135deg, #0051A8 0%, #007AFF 55%, #5AC8FA 100%)' },
+  green:  { label: 'グリーン', grad: 'linear-gradient(135deg, #1F7A3D 0%, #34C759 55%, #8BE28B 100%)' },
+  purple: { label: 'パープル', grad: 'linear-gradient(135deg, #4B2E83 0%, #7B4FCB 55%, #B98CFF 100%)' },
+  pink:   { label: 'ピンク',   grad: 'linear-gradient(135deg, #B0184D 0%, #FF2D78 55%, #FF8FB3 100%)' },
+  dark:   { label: 'ダーク',   grad: 'linear-gradient(135deg, #05070d 0%, #1b2333 100%)' },
+};
+const SHARE_CUSTOMIZE_KEY = 'emoteShareCustomize_v1';
+
+function loadShareCustomize() {
+  try {
+    const d = JSON.parse(localStorage.getItem(SHARE_CUSTOMIZE_KEY));
+    return { theme: (d && d.theme && SHARE_THEMES[d.theme]) ? d.theme : 'orange' };
+  } catch (_) {
+    return { theme: 'orange' };
+  }
+}
+function saveShareCustomize(theme) {
+  localStorage.setItem(SHARE_CUSTOMIZE_KEY, JSON.stringify({ theme }));
+}
+
+function openCustomizeModal() {
+  if (getStats().total === 0) return;
+  const saved = loadShareCustomize();
+  document.getElementById('themeSwatchRow').innerHTML = Object.keys(SHARE_THEMES).map(key => `
+    <div class="theme-swatch ${key === saved.theme ? 'selected' : ''}" data-theme="${key}"
+      style="background:${SHARE_THEMES[key].grad};" title="${SHARE_THEMES[key].label}"
+      onclick="selectShareTheme('${key}')"></div>`).join('');
+  document.getElementById('customizeComment').value = '';
+  openModal('customizeModal');
+}
+function selectShareTheme(key) {
+  document.querySelectorAll('#themeSwatchRow .theme-swatch').forEach(el => {
+    el.classList.toggle('selected', el.dataset.theme === key);
+  });
+}
+function readShareCustomizeFromModal() {
+  const themeEl = document.querySelector('#themeSwatchRow .theme-swatch.selected');
+  const theme = themeEl ? themeEl.dataset.theme : 'orange';
+  const comment = document.getElementById('customizeComment').value.trim();
+  saveShareCustomize(theme);
+  return { theme, comment };
+}
+
+function buildOverallExportCardEl(opts = {}) {
+  const { owned, total, pct } = getStats();
+  const pctTxt = formatPct(pct);
+  const theme = SHARE_THEMES[opts.theme] ? opts.theme : 'orange';
+  const comment = opts.comment || '';
+
+  const data = loadOwned();
+  const completeCount = EMOTES_DATA.filter(e => (data[e.id] || []).length === e.maxLevel).length;
+
+  const today = new Date();
+  const dateTxt = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日作成`;
+
+  const card = document.createElement('div');
+  card.className = 'export-card';
+  card.style.background = SHARE_THEMES[theme].grad;
+  card.innerHTML = `
+    <div class="exp-brand">🎭 エモート所持率管理</div>
+    <div class="exp-hero">
+      <div class="exp-hero-pct">${pctTxt}</div>
+      <div class="exp-hero-label">エモート所持率</div>
+      <div class="exp-hero-nums">所持中 ${total > 0 ? owned : '--'} ／ 総レベル数 ${total > 0 ? total : '--'}</div>
+      <div class="exp-hero-sub">コンプリート済み ${completeCount} / ${EMOTES_DATA.length} エモート</div>
+    </div>
+    ${comment ? `<div class="exp-comment">${escapeHtml(comment)}</div>` : ''}
+    <div class="exp-date">${dateTxt}</div>
+  `;
+  document.body.appendChild(card);
+  return card;
+}
+
+// html2canvasを必要になった時点で読み込む（未読み込みの場合のみ）
+let html2canvasLoading = null;
+function ensureHtml2Canvas() {
+  if (window.html2canvas) return Promise.resolve();
+  if (html2canvasLoading) return html2canvasLoading;
+  html2canvasLoading = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+    s.onload = () => resolve();
+    s.onerror = () => { html2canvasLoading = null; reject(new Error('html2canvas load failed')); };
+    document.head.appendChild(s);
+  });
+  return html2canvasLoading;
+}
+
+function sanitizeFilename(str) {
+  return String(str).replace(/[\\/:*?"<>|]/g, '_').trim() || 'emote';
+}
+
+// 指定したカード生成関数の出力を画像として書き出し、保存/共有する（共通処理）
+async function exportElementAsImage(buildCardFn, filenameBase, opts = {}) {
+  const { shareText, successToast = '画像を保存しました！' } = opts;
+  showToast('画像を生成中…');
+  let card = null;
+  try {
+    await ensureHtml2Canvas();
+    card = buildCardFn();
+    const canvas = await html2canvas(card, { backgroundColor: null, scale: 2 });
+    const filename = sanitizeFilename(filenameBase) + '.png';
+
+    const shareResult = await tryShareImage(canvas, filename, shareText);
+    if (shareResult === 'success') {
+      showToast(successToast);
+      return;
+    }
+    if (shareResult === 'cancelled') return;
+
+    openImagePreview(canvas.toDataURL('image/png'), filename, shareText);
+  } catch (err) {
+    console.error(err);
+    showToast('画像の保存に失敗しました');
+  } finally {
+    if (card) card.remove();
+  }
+}
+
+function isMobileDevice() {
+  if (navigator.userAgentData && typeof navigator.userAgentData.mobile === 'boolean') {
+    return navigator.userAgentData.mobile;
+  }
+  const ua = navigator.userAgent || '';
+  if (/Android|iPhone|iPod|iPad/i.test(ua)) return true;
+  if (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1) return true;
+  return false;
+}
+
+async function tryShareImage(canvas, filename, text) {
+  if (!isMobileDevice()) return 'unsupported';
+  if (!navigator.share || !navigator.canShare) return 'unsupported';
+  try {
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) return 'unsupported';
+    const file = new File([blob], filename, { type: 'image/png' });
+    const shareData = text ? { files: [file], text } : { files: [file] };
+    if (!navigator.canShare(shareData)) return 'unsupported';
+    await navigator.share(shareData);
+    return 'success';
+  } catch (err) {
+    if (err && err.name === 'AbortError') return 'cancelled';
+    return 'unsupported';
+  }
+}
+
+function openImagePreview(dataUrl, filename, shareText) {
+  document.getElementById('previewImg').src = dataUrl;
+  const link = document.getElementById('previewDownloadLink');
+  link.href = dataUrl;
+  link.download = filename;
+
+  const hint  = document.getElementById('previewHintText');
+  const twRow = document.getElementById('previewTwitterRow');
+  const title = document.getElementById('previewModalTitle');
+
+  if (shareText) {
+    title.textContent = '🖼️ 画像を保存してXへ投稿';
+    hint.textContent = '① 下の「ダウンロード」で画像を保存 → ② 「Xの投稿画面を開く」を押して、保存した画像を添付して投稿してください';
+    document.getElementById('previewTwitterLink').href = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(shareText);
+    twRow.style.display = '';
+  } else {
+    title.textContent = '🖼️ 画像を保存';
+    hint.textContent = '画像を長押し（PCの場合は右クリック）して「画像を保存」を選んでください';
+    twRow.style.display = 'none';
+  }
+
+  openModal('imagePreviewModal');
+}
+
+function saveOverallAsImage(fromCustomize) {
+  if (getStats().total === 0) { showToast('まずはエモートを登録してください'); return; }
+  const opts = fromCustomize ? readShareCustomizeFromModal() : {};
+  if (fromCustomize) closeModal('customizeModal');
+  return exportElementAsImage(() => buildOverallExportCardEl(opts), 'エモート所持率');
+}
+
+function buildOverallTweetText(comment) {
+  if (comment) return `${comment}\n\n${SITE_URL}\n${SHARE_HASHTAG}`;
+  const { owned, total, pct } = getStats();
+  const pctTxt = formatPct(pct);
+  return `エモート所持率は${pctTxt}でした！\n（所持中 ${owned} ／ 総レベル数 ${total}）\nあなたは何%持ってる？✨\n\n${SITE_URL}\n${SHARE_HASHTAG}`;
+}
+
+function shareOverallOnTwitter(fromCustomize) {
+  if (getStats().total === 0) { showToast('まずはエモートを登録してください'); return; }
+  const opts = fromCustomize ? readShareCustomizeFromModal() : {};
+  if (fromCustomize) closeModal('customizeModal');
+  return exportElementAsImage(() => buildOverallExportCardEl(opts), 'エモート所持率', {
+    shareText: buildOverallTweetText(opts.comment),
+    successToast: '共有しました！'
+  });
 }
 
 /* ================================================================
