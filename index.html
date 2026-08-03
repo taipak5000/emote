@@ -345,6 +345,15 @@
     .exp-emote-icon-cell img { width: 100%; height: 100%; object-fit: contain; padding: 12%; box-sizing: border-box; display: block; }
     .exp-emote-icon-cell .exp-emote-icon-fallback { font-size: 20px; }
     .exp-emote-icon-empty { color: #fff; font-size: 12.5px; text-align: center; opacity: 0.85; padding: 10px 0; }
+    .exp-emote-icon-levels {
+      position: absolute; bottom: 3px; left: 0; right: 0; z-index: 2;
+      display: flex; justify-content: center; flex-wrap: wrap; gap: 2px; padding: 0 3px;
+    }
+    .exp-lv-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(255,255,255,0.85); border: 1px solid var(--text-3);
+    }
+    .exp-lv-dot.is-owned { background: var(--green); border-color: var(--green); }
 
     footer {
       text-align: center; padding: 24px 16px; color: var(--text-2); font-size: 13px;
@@ -961,11 +970,17 @@ function buildEmoteIconGridHtml() {
     return '<div class="exp-emote-icon-empty">まだ所持しているエモートがありません</div>';
   }
   const cells = ownedEmotes.map(e => {
-    const isComplete = (data[e.id] || []).length === e.maxLevel;
+    const ownedLevels = new Set(data[e.id] || []);
+    const isComplete = ownedLevels.size === e.maxLevel;
+    const dots = [];
+    for (let lv = 1; lv <= e.maxLevel; lv++) {
+      dots.push(`<span class="exp-lv-dot ${ownedLevels.has(lv) ? 'is-owned' : ''}"></span>`);
+    }
     return `
       <div class="exp-emote-icon-cell ${isComplete ? 'is-complete' : ''}" title="${escapeHtml(e.name)}">
         <img src="icons/${e.id}.png" alt="${escapeHtml(e.name)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
         <span class="exp-emote-icon-fallback" style="display:none;">🎭</span>
+        <div class="exp-emote-icon-levels">${dots.join('')}</div>
       </div>`;
   }).join('');
   return `<div class="exp-emote-icon-grid">${cells}</div>`;
