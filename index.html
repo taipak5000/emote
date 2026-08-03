@@ -325,6 +325,26 @@
       font-family: inherit; color: var(--text); resize: vertical; min-height: 60px;
       background: var(--bg);
     }
+    .customize-toggle-opt {
+      display: flex; align-items: center; gap: 8px; font-size: 13.5px;
+      color: var(--text); padding: 8px 2px;
+    }
+    .customize-toggle-opt input { width: 17px; height: 17px; flex-shrink: 0; accent-color: var(--orange); }
+
+    /* ── シェア画像内：所持エモートのアイコン一覧グリッド ───── */
+    .exp-emote-icon-grid {
+      display: grid; grid-template-columns: repeat(6, 1fr); gap: 7px;
+      background: #fff; border-radius: 18px; padding: 14px; margin-bottom: 4px;
+    }
+    .exp-emote-icon-cell {
+      background: var(--bg); border-radius: 10px; aspect-ratio: 1; position: relative;
+      overflow: hidden; display: flex; align-items: center; justify-content: center;
+      border: 2px solid transparent;
+    }
+    .exp-emote-icon-cell.is-complete { border-color: var(--green); }
+    .exp-emote-icon-cell img { width: 100%; height: 100%; object-fit: contain; padding: 12%; box-sizing: border-box; display: block; }
+    .exp-emote-icon-cell .exp-emote-icon-fallback { font-size: 20px; }
+    .exp-emote-icon-empty { color: #fff; font-size: 12.5px; text-align: center; opacity: 0.85; padding: 10px 0; }
 
     footer {
       text-align: center; padding: 24px 16px; color: var(--text-2); font-size: 13px;
@@ -458,6 +478,12 @@
 
     <div class="customize-section-label">背景テーマ</div>
     <div class="theme-swatch-row" id="themeSwatchRow"><!-- JS --></div>
+
+    <div class="customize-section-label">表示オプション</div>
+    <label class="customize-toggle-opt">
+      <input type="checkbox" id="customizeShowIcons">
+      <span>所持しているエモートのアイコン一覧を載せる</span>
+    </label>
 
     <div class="customize-section-label">コメント（任意）</div>
     <textarea id="customizeComment" class="customize-comment-input" maxlength="120" placeholder="例）プレイヤーネーム：〇〇（未入力の場合は通常の文言になります）"></textarea>
@@ -889,13 +915,16 @@ const SHARE_CUSTOMIZE_KEY = 'emoteShareCustomize_v1';
 function loadShareCustomize() {
   try {
     const d = JSON.parse(localStorage.getItem(SHARE_CUSTOMIZE_KEY));
-    return { theme: (d && d.theme && SHARE_THEMES[d.theme]) ? d.theme : 'orange' };
+    return {
+      theme: (d && d.theme && SHARE_THEMES[d.theme]) ? d.theme : 'orange',
+      showIcons: !!(d && d.showIcons),
+    };
   } catch (_) {
-    return { theme: 'orange' };
+    return { theme: 'orange', showIcons: false };
   }
 }
-function saveShareCustomize(theme) {
-  localStorage.setItem(SHARE_CUSTOMIZE_KEY, JSON.stringify({ theme }));
+function saveShareCustomize(theme, showIcons) {
+  localStorage.setItem(SHARE_CUSTOMIZE_KEY, JSON.stringify({ theme, showIcons }));
 }
 
 function openCustomizeModal() {
@@ -905,6 +934,7 @@ function openCustomizeModal() {
     <div class="theme-swatch ${key === saved.theme ? 'selected' : ''}" data-theme="${key}"
       style="background:${SHARE_THEMES[key].grad};" title="${SHARE_THEMES[key].label}"
       onclick="selectShareTheme('${key}')"></div>`).join('');
+  document.getElementById('customizeShowIcons').checked = saved.showIcons;
   document.getElementById('customizeComment').value = '';
   openModal('customizeModal');
 }
@@ -916,9 +946,29 @@ function selectShareTheme(key) {
 function readShareCustomizeFromModal() {
   const themeEl = document.querySelector('#themeSwatchRow .theme-swatch.selected');
   const theme = themeEl ? themeEl.dataset.theme : 'orange';
+  const showIcons = document.getElementById('customizeShowIcons').checked;
   const comment = document.getElementById('customizeComment').value.trim();
-  saveShareCustomize(theme);
-  return { theme, comment };
+  saveShareCustomize(theme, showIcons);
+  return { theme, showIcons, comment };
+}
+
+// 所持している（1レベル以上所持の）エモートのアイコンを並べたグリッドHTMLを作る
+// （全レベル所持＝コンプリートのものは緑枠で強調表示）
+function buildEmoteIconGridHtml() {
+  const data = loadOwned();
+  const ownedEmotes = EMOTES_DATA.filter(e => (data[e.id] || []).length > 0);
+  if (ownedEmotes.length === 0) {
+    return '<div class="exp-emote-icon-empty">まだ所持しているエモートがありません</div>';
+  }
+  const cells = ownedEmotes.map(e => {
+    const isComplete = (data[e.id] || []).length === e.maxLevel;
+    return `
+      <div class="exp-emote-icon-cell ${isComplete ? 'is-complete' : ''}" title="${escapeHtml(e.name)}">
+        <img src="icons/${e.id}.png" alt="${escapeHtml(e.name)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+        <span class="exp-emote-icon-fallback" style="display:none;">🎭</span>
+      </div>`;
+  }).join('');
+  return `<div class="exp-emote-icon-grid">${cells}</div>`;
 }
 
 function buildOverallExportCardEl(opts = {}) {
@@ -945,6 +995,7 @@ function buildOverallExportCardEl(opts = {}) {
       <div class="exp-hero-sub">コンプリート済み ${completeCount} / ${EMOTES_DATA.length} エモート</div>
     </div>
     ${comment ? `<div class="exp-comment">${escapeHtml(comment)}</div>` : ''}
+    ${opts.showIcons ? buildEmoteIconGridHtml() : ''}
     <div class="exp-date">${dateTxt}</div>
   `;
   document.body.appendChild(card);
