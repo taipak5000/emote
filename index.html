@@ -82,6 +82,12 @@
       border-radius: 6px; padding: 5px 9px; font-size: 13px; cursor: pointer; flex-shrink: 0;
     }
     .pf-icon-btn:hover { background: var(--sep); }
+    .pf-color-input { width: 28px; height: 28px; padding: 0; border: 1px solid var(--sep); border-radius: 50%;
+      background: none; cursor: pointer; flex-shrink: 0; overflow: hidden; }
+    .pf-color-input::-webkit-color-swatch-wrapper { padding: 0; }
+    .pf-color-input::-webkit-color-swatch { border: none; border-radius: 50%; }
+    .pf-color-input::-moz-color-swatch { border: none; border-radius: 50%; }
+    .pf-color-clear-btn { font-size: 10px; }
     .pf-add-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
     .pf-input { flex: 1; min-width: 0; background: var(--bg); border: 1px solid var(--sep); border-radius: 6px;
       padding: 8px 10px; font-size: 14px; color: var(--text); font-family: inherit; outline: none; box-sizing: border-box; }
@@ -572,11 +578,19 @@ function pfIsSafeId(id) {
   return typeof id === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(id);
 }
 
+// アカウントカラー（任意）。#RRGGBB 形式のみを許可する。
+function pfIsSafeColor(c) {
+  return typeof c === 'string' && /^#[0-9A-Fa-f]{6}$/.test(c);
+}
+
 function loadProfiles() {
   try {
     let list = JSON.parse(localStorage.getItem(PROFILES_KEY));
     if (!Array.isArray(list)) return null;
-    list = list.filter(p => p && pfIsSafeId(p.id) && typeof p.name === 'string');
+    list = list.filter(p => p && pfIsSafeId(p.id) && typeof p.name === 'string').map(p => {
+      if (p.color !== undefined && !pfIsSafeColor(p.color)) { const { color, ...rest } = p; return rest; }
+      return p;
+    });
     if (list.length > 0) return list;
   } catch (_) {}
   return null;
@@ -598,6 +612,52 @@ function getActiveProfileId() { return localStorage.getItem(ACTIVE_PROFILE_KEY) 
 function getActiveProfile() {
   const list = ensureProfilesInit();
   return list.find(p => p.id === getActiveProfileId()) || list[0];
+}
+
+/* プロフィールごとのアカウントカラー（任意）。イメージカラー（オレンジ）に反映する。 */
+const PF_THEME_MAIN_VAR = '--orange';
+const PF_THEME_DARK_VAR = '--orange-d';
+const PF_THEME_BG_VAR   = '--orange-bg';
+function pfHexToRgb(hex) {
+  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+  return m ? { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) } : null;
+}
+function pfDarkenHex(hex, amt) {
+  const c = pfHexToRgb(hex);
+  if (!c) return hex;
+  const f = v => Math.max(0, Math.round(v * (1 - amt))).toString(16).padStart(2, '0');
+  return `#${f(c.r)}${f(c.g)}${f(c.b)}`;
+}
+function pfApplyThemeColor(hex) {
+  const root = document.documentElement.style;
+  if (!hex || !pfIsSafeColor(hex)) {
+    root.removeProperty(PF_THEME_MAIN_VAR);
+    root.removeProperty(PF_THEME_DARK_VAR);
+    root.removeProperty(PF_THEME_BG_VAR);
+    return;
+  }
+  const c = pfHexToRgb(hex);
+  root.setProperty(PF_THEME_MAIN_VAR, hex);
+  root.setProperty(PF_THEME_DARK_VAR, pfDarkenHex(hex, 0.15));
+  root.setProperty(PF_THEME_BG_VAR, `rgba(${c.r}, ${c.g}, ${c.b}, 0.10)`);
+}
+function pfSetProfileColor(id, color) {
+  if (!pfIsSafeColor(color)) return;
+  const list = ensureProfilesInit();
+  const p = list.find(x => x.id === id);
+  if (!p) return;
+  p.color = color;
+  saveProfiles(list);
+  if (id === getActiveProfileId()) pfApplyThemeColor(color);
+}
+function pfClearProfileColor(id) {
+  const list = ensureProfilesInit();
+  const p = list.find(x => x.id === id);
+  if (!p) return;
+  delete p.color;
+  saveProfiles(list);
+  if (id === getActiveProfileId()) pfApplyThemeColor(null);
+  pfRenderModal();
 }
 
 function nsKey(rawKey) {
@@ -732,9 +792,10 @@ function pfCloseModal() {
   document.getElementById('pfModalOverlay').classList.remove('open');
 }
 function pfRenderBar() {
+  const profile = getActiveProfile();
+  pfApplyThemeColor(profile.color);
   const bar = document.getElementById('pfBar');
   if (!bar) return;
-  const profile = getActiveProfile();
   bar.innerHTML = `🗂️ <b>${escapeHtml(profile.name)}</b> に切替中（タップで切替）`;
 }
 function pfRenderModal() {
@@ -761,9 +822,13 @@ function pfRenderModal() {
           <button type="button" class="pf-icon-btn" onclick="pfCancelRowState()">取消</button>
         </div>`;
     }
+    const colorVal = pfIsSafeColor(p.color) ? p.color : '#FF9500';
     return `
       <div class="pf-row ${isActive ? 'active' : ''}">
+        <input type="color" class="pf-color-input" value="${colorVal}" title="アカウントカラー"
+          onchange="pfSetProfileColor('${p.id}', this.value)">
         <span class="pf-row-name" onclick="switchProfile('${p.id}')">${isActive ? '✅ ' : ''}${escapeHtml(p.name)}</span>
+        ${p.color ? `<button type="button" class="pf-icon-btn pf-color-clear-btn" title="カラーを初期値に戻す" onclick="pfClearProfileColor('${p.id}')">↺</button>` : ''}
         <button type="button" class="pf-icon-btn" title="名前を変更" onclick="pfStartRename('${p.id}')">✏️</button>
         ${list.length > 1 ? `<button type="button" class="pf-icon-btn" title="削除" onclick="pfStartDelete('${p.id}')">🗑️</button>` : ''}
       </div>`;
